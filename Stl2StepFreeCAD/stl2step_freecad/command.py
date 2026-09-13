@@ -30,11 +30,18 @@ def _selected_mesh():
 
 
 def _result_summary(result: dict) -> str:
+    def warning_text(warning):
+        if warning.startswith("smooth: analytic rebuild reverted"):
+            return "One component could not be safely reconstructed analytically, so it was kept faceted."
+        return warning
+
     lines = [
         "The STEP geometry was imported.", "",
-        f"Document: {result.get('documentName', 'new document')}",
+        f"Source: {result.get('inputName', 'selected STL')}",
+        f"Output document: {result.get('documentName', 'new FreeCAD document')}",
         f"Output STEP: {result.get('stepPath', 'temporary file')}",
         f"Mode: {result.get('mode', 'TrueForm')}",
+        "",
         f"Triangles: {result.get('triangles', 0)}",
         f"Solids: {result.get('solids', 0)}",
         f"Open shells: {result.get('openShells', 0)}",
@@ -45,10 +52,11 @@ def _result_summary(result: dict) -> str:
         f"Fillets recovered: {result.get('smoothFillets', 0)}",
         f"FreeCAD objects imported: {result.get('importedObjects', 0)}",
         f"Elapsed: {result.get('seconds', 0):.2f}s",
+        f"Engine: {result.get('engineVersion', 'unknown')}",
     ]
     warnings = result.get("warnings") or []
     if warnings:
-        lines.extend(["", "Warnings:", *[f"- {warning}" for warning in warnings]])
+        lines.extend(["", "Warnings:", *[f"- {warning_text(warning)}" for warning in warnings]])
     return "\n".join(lines)
 
 
@@ -71,7 +79,8 @@ class ConversionProgressDialog(QtWidgets.QDialog):
         )
         layout.addWidget(self._status)
 
-        self._activity = QtWidgets.QLabel("The engine is working (progress is indeterminate).")
+        self._activity_text = "The engine is working (progress is indeterminate)."
+        self._activity = QtWidgets.QLabel(self._activity_text)
         layout.addWidget(self._activity)
 
         self._elapsed = QtWidgets.QLabel("Elapsed: 00:00")
@@ -93,17 +102,19 @@ class ConversionProgressDialog(QtWidgets.QDialog):
     def _tick(self):
         self._dots = (self._dots + 1) % 4
         self._seconds += 0.5
-        self._activity.setText("The engine is working" + "." * self._dots)
+        self._activity.setText(self._activity_text + "." * self._dots)
         minutes, seconds = divmod(int(self._seconds), 60)
         self._elapsed.setText(f"Elapsed: {minutes:02d}:{seconds:02d}")
 
-    def set_phase(self, heading, activity):
+    def set_phase(self, heading, activity, allow_cancel=True):
         self._heading.setText(heading)
+        self._activity_text = activity
         self._activity.setText(activity)
-        self._cancel_button.setEnabled(False)
+        self._cancel_button.setEnabled(allow_cancel)
 
     def set_cancelled(self):
-        self._activity.setText("Cancelling…")
+        self._activity_text = "Cancelling…"
+        self._activity.setText(self._activity_text)
         self._cancel_button.setEnabled(False)
 
     def closeEvent(self, event):
@@ -138,12 +149,12 @@ class ConversionTaskPanel:
         self._units = QtWidgets.QComboBox()
         self._units.addItem("Millimetres (mm)", "mm")
         self._units.addItem("Inches (in)", "in")
-        layout.addRow("Units", self._units)
+        layout.addRow("STL units", self._units)
 
         self._mode = QtWidgets.QComboBox()
         self._mode.addItem("TrueForm (recommended)", "trueform")
         self._mode.addItem("Verbatim (preserve facets)", "verbatim")
-        layout.addRow("Conversion", self._mode)
+        layout.addRow("Conversion mode", self._mode)
 
         settings = App.ParamGet("User parameter:BaseApp/Preferences/Mod/Stl2StepFreeCAD")
         self._units.setCurrentIndex(max(0, self._units.findData(settings.GetString("Units", "mm"))))
@@ -195,6 +206,8 @@ class ConvertCommand:
         self._temp_directory = None
         self._output_step = None
         self._document_name = None
+        self._input_name = None
+        self._executable = None
         self._source_mesh_name = None
         self._mode = None
         self._cancel_requested = False
@@ -297,6 +310,8 @@ class ConvertCommand:
             QtWidgets.QMessageBox.critical(parent, "STL to STEP", str(exc))
             return False
         self._document_name = document.Name
+        self._input_name = input_stl.name
+        self._executable = executable
         self._mode = mode
         self._cancel_requested = False
         self._shutting_down = False
@@ -355,9 +370,14 @@ class ConvertCommand:
             App.Console.PrintMessage(f"stl2step stderr: {stderr}\n")
         try:
             result = engine.validate_conversion(stdout, stderr, exit_code, output_step)
+            result["inputName"] = self._input_name
+            try:
+                result["engineVersion"] = engine.version(self._executable)
+            except Exception:
+                result["engineVersion"] = "unknown"
             if self._progress_dialog and hasattr(self._progress_dialog, "set_phase"):
                 self._progress_dialog.set_phase(
-                    "Importing STEP geometry", "FreeCAD is opening the generated STEP file…"
+                    "Importing STEP geometry", "FreeCAD is opening the generated STEP file…", False
                 )
             parent.statusBar().showMessage("STL to STEP: importing STEP geometry…")
             try:
@@ -394,12 +414,12 @@ class ConvertCommand:
             QtWidgets.QMessageBox.critical(parent, "STL to STEP", f"Could not import the conversion:\n\n{exc}{retained}")
             if temp_directory and temp_directory not in self._retained_directories:
                 self._retained_directories.append(temp_directory)
-            self._temp_directory = self._output_step = self._document_name = self._source_mesh_name = self._mode = None
+            self._temp_directory = self._output_step = self._document_name = self._source_mesh_name = self._mode = self._input_name = self._executable = None
 
     def _cleanup(self):
         if self._temp_directory:
             shutil.rmtree(self._temp_directory, ignore_errors=True)
-        self._temp_directory = self._output_step = self._document_name = self._source_mesh_name = self._mode = None
+        self._temp_directory = self._output_step = self._document_name = self._source_mesh_name = self._mode = self._input_name = self._executable = None
 
     def _cleanup_retained(self):
         for directory in self._retained_directories:
