@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import re
 import zipfile
 from pathlib import Path
 
 
 def verify_archive(archive: Path, addon_dir: str = "Stl2StepFreeCAD") -> None:
     prefix = addon_dir.rstrip("/") + "/"
+    stale_fork = re.compile(r"cdracars/stl2step(?:[/'\"\s]|$)")
     with zipfile.ZipFile(archive) as bundle:
         names = set(bundle.namelist())
         required = {
@@ -26,7 +28,7 @@ def verify_archive(archive: Path, addon_dir: str = "Stl2StepFreeCAD") -> None:
         dlls = [name for name in names if name.startswith(f"{prefix}bin/windows-x86_64/") and name.lower().endswith(".dll")]
         if not dlls:
             raise ValueError("archive contains no engine runtime DLLs")
-        if any("cdracars/stl2step" in name.lower() or "engine-pin.json" in name.lower() for name in names):
+        if any(stale_fork.search(name.lower()) or "engine-pin.json" in name.lower() for name in names):
             raise ValueError("archive contains a stale fork or legacy engine pin reference")
         text_files = (
             name for name in names
@@ -34,7 +36,7 @@ def verify_archive(archive: Path, addon_dir: str = "Stl2StepFreeCAD") -> None:
         )
         for name in text_files:
             contents = bundle.read(name).decode("utf-8", errors="replace").lower()
-            if "cdracars/stl2step" in contents or "engine-pin.json" in contents:
+            if stale_fork.search(contents) or "engine-pin.json" in contents:
                 raise ValueError(f"archive file contains a stale fork or legacy engine pin reference: {name}")
 
 
