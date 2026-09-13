@@ -33,8 +33,12 @@ jobs:
         run: |
           $tag = '${{ github.event.release.tag_name || inputs.tag }}'
           $archive = Join-Path $env:RUNNER_TEMP "Stl2StepFreeCAD-$tag.zip"
-          Compress-Archive -Path 'Stl2StepFreeCAD' -DestinationPath $archive -Force
+          Compress-Archive -Path 'Stl2StepFreeCAD','ENGINE_CONTRACT.md','LICENSE','LICENSE.stl2step','README.md','THIRD_PARTY_NOTICES.md','config' -DestinationPath $archive -Force
           "ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Verify add-on archive
+        shell: pwsh
+        run: python scripts/verify_release_archive.py $env:ARCHIVE
 
       - name: Upload add-on archive
         shell: pwsh

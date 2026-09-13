@@ -30,7 +30,7 @@ jobs:
           if (-not $windows) { throw "Manifest has no windows-x64 entry" }
           $config = Get-Content -Raw (Join-Path $env:GITHUB_WORKSPACE 'config\engine-release.json') | ConvertFrom-Json
           if ($config.tag -eq $release.tag_name -and $config.sha256 -eq $windows.sha256) { exit 0 }
-          @{ upstreamRepository='BlinkingSun/stl2step'; tag=$release.tag_name; engineVersion=$manifest.engineVersion; asset=$windows.name; sha256=$windows.sha256; size=$windows.size } |
+          @{ upstreamRepository='BlinkingSun/stl2step'; tag=$release.tag_name; engineVersion=$manifest.engineVersion; asset=$windows.name; sha256=$windows.sha256; size=$windows.size; minimumWindows=$windows.minWindows } |
             ConvertTo-Json | Set-Content (Join-Path $env:GITHUB_WORKSPACE 'config\engine-release.json')
           "UPSTREAM_TAG=$($release.tag_name)" | Out-File -FilePath $env:GITHUB_ENV -Append
           "ENGINE_VERSION=$($manifest.engineVersion)" | Out-File -FilePath $env:GITHUB_ENV -Append
