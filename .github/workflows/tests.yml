@@ -1,0 +1,42 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: Run engine adapter tests
+        run: python -m unittest discover -s tests
+
+      - name: Run Python syntax checks
+        shell: pwsh
+        run: |
+          python -m py_compile `
+            Stl2StepFreeCAD\Init.py `
+            Stl2StepFreeCAD\InitGui.py `
+            Stl2StepFreeCAD\stl2step_freecad\command.py `
+            Stl2StepFreeCAD\stl2step_freecad\engine.py
+
+      - name: Validate bundled engine
+        shell: pwsh
+        run: |
+          $exe = Join-Path $env:GITHUB_WORKSPACE 'Stl2StepFreeCAD\bin\windows-x86_64\stl2step.exe'
+          $version = (& $exe --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch '^stl2step \d+\.\d+\.\d+$') {
+            throw "Bundled engine validation failed (exit $LASTEXITCODE): $version"
+          }

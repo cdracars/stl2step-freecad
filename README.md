@@ -110,7 +110,8 @@ upstream release and binary provenance before changing this policy.
 
 ## Licensing
 
-The add-on and engine integration are MIT-licensed; see [LICENSE](LICENSE).
-The bundled OCCT runtime libraries have separate LGPL-2.1-with-exception terms.
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) before redistributing or
+The add-on is MIT-licensed; see [LICENSE](LICENSE). The upstream engine's
+license is reproduced in [LICENSE.stl2step](LICENSE.stl2step). The bundled OCCT
+runtime libraries have separate LGPL-2.1-with-exception terms. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) before redistributing or
 modifying the binary bundle.

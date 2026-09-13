@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Upstream engine issues
+    url: https://github.com/BlinkingSun/stl2step/issues
+    about: Report engine algorithm or CLI issues to the canonical upstream project.

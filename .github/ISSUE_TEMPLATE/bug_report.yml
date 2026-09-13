@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a reproducible FreeCAD add-on problem.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: input
+    id: freecad
+    attributes:
+      label: FreeCAD version
+      placeholder: 1.1.3
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system
+      placeholder: Windows 11 x64
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Conversion mode
+      options:
+        - TrueForm
+        - Verbatim
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Include whether you selected a mesh or chose an external STL.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console output
+      description: Paste redacted stl2step lines and error text. Do not attach proprietary models.
+      render: text

@@ -3,7 +3,6 @@
 import json
 import shutil
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
@@ -12,10 +11,47 @@ import Import
 
 
 repo = Path(__file__).resolve().parents[1]
-stl = Path(r"C:\Users\cdrac\code\stl2step\tests\corpus\S09.stl")
 engine = repo / "Stl2StepFreeCAD" / "bin" / "windows-x86_64" / "stl2step.exe"
 work = Path(tempfile.mkdtemp(prefix="stl2step-freecad-smoke-", dir=repo / "tests"))
-output = work / "S09.step"
+stl = work / "tetrahedron.stl"
+output = work / "tetrahedron.step"
+
+# Keep this smoke test self-contained so contributors do not need a checkout of
+# the separate engine repository or a machine-specific fixture path.
+stl.write_text(
+    """solid tetrahedron
+facet normal 0 0 0
+ outer loop
+  vertex 0 0 0
+  vertex 10 0 0
+  vertex 0 10 0
+ endloop
+endfacet
+facet normal 0 0 0
+ outer loop
+  vertex 0 0 0
+  vertex 0 10 0
+  vertex 0 0 10
+ endloop
+endfacet
+facet normal 0 0 0
+ outer loop
+  vertex 0 0 0
+  vertex 0 0 10
+  vertex 10 0 0
+ endloop
+endfacet
+facet normal 0 0 0
+ outer loop
+  vertex 10 0 0
+  vertex 0 0 10
+  vertex 0 10 0
+ endloop
+endfacet
+endsolid tetrahedron
+""",
+    encoding="ascii",
+)
 
 try:
     completed = subprocess.run(
