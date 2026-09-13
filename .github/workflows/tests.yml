@@ -32,11 +32,6 @@ jobs:
             Stl2StepFreeCAD\stl2step_freecad\command.py `
             Stl2StepFreeCAD\stl2step_freecad\engine.py
 
-      - name: Validate bundled engine
+      - name: Vendor pinned upstream engine
         shell: pwsh
-        run: |
-          $exe = Join-Path $env:GITHUB_WORKSPACE 'Stl2StepFreeCAD\bin\windows-x86_64\stl2step.exe'
-          $version = (& $exe --version | Out-String).Trim()
-          if ($LASTEXITCODE -ne 0 -or $version -notmatch '^stl2step \d+\.\d+\.\d+$') {
-            throw "Bundled engine validation failed (exit $LASTEXITCODE): $version"
-          }
+        run: .\scripts\vendor-engine.ps1

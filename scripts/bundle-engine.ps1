@@ -19,6 +19,8 @@ if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
     throw "Engine directory does not contain stl2step.exe: $source"
 }
 
+Write-Warning "This copies a local build for development. Published releases use vendor-engine.ps1 and the canonical upstream checksum manifest."
+
 New-Item -ItemType Directory -Force -Path $target | Out-Null
 Get-ChildItem -LiteralPath $target -File | Remove-Item -Force
 Get-ChildItem -LiteralPath $source -File | Copy-Item -Destination $target -Force
