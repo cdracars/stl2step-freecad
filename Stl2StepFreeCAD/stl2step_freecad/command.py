@@ -32,6 +32,8 @@ def _selected_mesh():
 def _result_summary(result: dict) -> str:
     lines = [
         "The STEP geometry was imported.", "",
+        f"Document: {result.get('documentName', 'new document')}",
+        f"Output STEP: {result.get('stepPath', 'temporary file')}",
         f"Mode: {result.get('mode', 'TrueForm')}",
         f"Triangles: {result.get('triangles', 0)}",
         f"Solids: {result.get('solids', 0)}",
@@ -69,7 +71,7 @@ class ConversionProgressDialog(QtWidgets.QDialog):
         )
         layout.addWidget(self._status)
 
-        self._activity = QtWidgets.QLabel("The engine is working")
+        self._activity = QtWidgets.QLabel("The engine is working (progress is indeterminate).")
         layout.addWidget(self._activity)
 
         self._elapsed = QtWidgets.QLabel("Elapsed: 00:00")
@@ -143,6 +145,10 @@ class ConversionTaskPanel:
         self._mode.addItem("Verbatim (preserve facets)", "verbatim")
         layout.addRow("Conversion", self._mode)
 
+        settings = App.ParamGet("User parameter:BaseApp/Preferences/Mod/Stl2StepFreeCAD")
+        self._units.setCurrentIndex(max(0, self._units.findData(settings.GetString("Units", "mm"))))
+        self._mode.setCurrentIndex(max(0, self._mode.findData(settings.GetString("Mode", "trueform"))))
+
         if source_mesh:
             self._path.setText(f"Selected mesh: {source_mesh.Label}")
             self._path.setReadOnly(True)
@@ -168,6 +174,10 @@ class ConversionTaskPanel:
             return
         units = "mm" if self._source_mesh else self._units.currentData()
         mode = self._mode.currentData()
+        settings = App.ParamGet("User parameter:BaseApp/Preferences/Mod/Stl2StepFreeCAD")
+        if not self._source_mesh:
+            settings.SetString("Units", units)
+        settings.SetString("Mode", mode)
         if self._command._start_conversion(self._document, self._source_mesh, input_stl, units, mode):
             self._command._panel = None
             Gui.Control.closeDialog()
@@ -188,6 +198,8 @@ class ConvertCommand:
         self._source_mesh_name = None
         self._mode = None
         self._cancel_requested = False
+        self._shutting_down = False
+        self._retained_directories = []
         self._progress_dialog = None
         self._panel = None
 
@@ -242,7 +254,16 @@ class ConvertCommand:
         Gui.getMainWindow().statusBar().showMessage("STL to STEP: cancelling…")
         process.kill()
 
+    def shutdown(self):
+        """Stop child work when FreeCAD deactivates or unloads the workbench."""
+        self._shutting_down = True
+        if self._process is not None:
+            self._cancel_requested = True
+            self._process.kill()
+        self._hide_progress()
+
     def Activated(self):
+        self._shutting_down = False
         if self._process is not None:
             QtWidgets.QMessageBox.information(
                 Gui.getMainWindow(), "STL to STEP",
@@ -278,7 +299,13 @@ class ConvertCommand:
         self._document_name = document.Name
         self._mode = mode
         self._cancel_requested = False
+        self._shutting_down = False
         self._output_step = self._temp_directory / f"{input_stl.stem}.step"
+        self._show_progress(input_stl, mode)
+        if hasattr(self._progress_dialog, "set_phase"):
+            self._progress_dialog.set_phase(
+                "Preparing conversion", "Checking the engine and preparing temporary files…"
+            )
         self._process = QtCore.QProcess(parent)
         self._process.finished.connect(self._finished)
         self._process.setProgram(str(executable))
@@ -293,8 +320,12 @@ class ConvertCommand:
             self._cleanup()
             QtWidgets.QMessageBox.critical(parent, "STL to STEP", f"Could not start stl2step:\n\n{error}")
             return False
+        if hasattr(self._progress_dialog, "set_phase"):
+            self._progress_dialog.set_phase(
+                "Reconstructing STL geometry",
+                "The engine is working (progress is indeterminate).",
+            )
         App.Console.PrintMessage(f"stl2step: converting {input_stl}\n")
-        self._show_progress(input_stl, mode)
         return True
 
     def _finished(self, exit_code, _exit_status):
@@ -306,6 +337,8 @@ class ConvertCommand:
         if self._cancel_requested:
             self._hide_progress()
             self._cleanup()
+            if self._shutting_down:
+                return
             parent.statusBar().showMessage("STL to STEP: conversion cancelled", 10000)
             QtWidgets.QMessageBox.information(
                 parent, "STL to STEP", "The conversion was cancelled. No source mesh was hidden."
@@ -347,21 +380,34 @@ class ConvertCommand:
             Gui.activeDocument().activeView().fitAll()
             result["mode"] = "TrueForm" if self._mode == "trueform" else "Verbatim"
             result["importedObjects"] = imported_count
+            result["documentName"] = document.Label or document.Name
+            result["stepPath"] = str(output_step)
             QtWidgets.QMessageBox.information(parent, "STL to STEP", _result_summary(result))
             self._hide_progress()
             self._cleanup()
+            self._cleanup_retained()
         except Exception as exc:
             App.Console.PrintError(f"stl2step: {exc}\n")
             self._hide_progress()
             parent.statusBar().showMessage(f"STL to STEP failed: {exc}", 15000)
             retained = f"\n\nTemporary files remain at:\n{temp_directory}"
             QtWidgets.QMessageBox.critical(parent, "STL to STEP", f"Could not import the conversion:\n\n{exc}{retained}")
+            if temp_directory and temp_directory not in self._retained_directories:
+                self._retained_directories.append(temp_directory)
+            self._temp_directory = self._output_step = self._document_name = self._source_mesh_name = self._mode = None
 
     def _cleanup(self):
         if self._temp_directory:
             shutil.rmtree(self._temp_directory, ignore_errors=True)
         self._temp_directory = self._output_step = self._document_name = self._source_mesh_name = self._mode = None
 
+    def _cleanup_retained(self):
+        for directory in self._retained_directories:
+            shutil.rmtree(directory, ignore_errors=True)
+        self._retained_directories = []
+
     @classmethod
     def install(cls):
-        Gui.addCommand(cls.NAME, cls())
+        command = cls()
+        Gui.addCommand(cls.NAME, command)
+        return command
