@@ -2,7 +2,7 @@
 <package format="1" xmlns="https://wiki.freecad.org/Package_Metadata">
   <name>STL to STEP</name>
   <description>FreeCAD workbench integrating the stl2step reconstruction engine.</description>
-  <version>0.3.0</version>
+  <version>0.5.0</version>
   <date>2026-09-12</date>
   <freecadmin>0.21</freecadmin>
   <maintainer>stl2step contributors</maintainer>
