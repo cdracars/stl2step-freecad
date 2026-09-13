@@ -1,0 +1,45 @@
+name: Package FreeCAD release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to package
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - name: Check out release
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
+      - name: Vendor verified upstream engine
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .\scripts\vendor-engine.ps1
+
+      - name: Create add-on archive
+        shell: pwsh
+        run: |
+          $tag = '${{ github.event.release.tag_name || inputs.tag }}'
+          $archive = Join-Path $env:RUNNER_TEMP "Stl2StepFreeCAD-$tag.zip"
+          Compress-Archive -Path 'Stl2StepFreeCAD' -DestinationPath $archive -Force
+          "ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload add-on archive
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ github.event.release.tag_name || inputs.tag }}'
+          gh release upload $tag $env:ARCHIVE --repo $env:GITHUB_REPOSITORY --clobber

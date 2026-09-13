@@ -16,33 +16,24 @@ jobs:
       - name: Check out FreeCAD add-on
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Download latest upstream Windows engine
+      - name: Check latest upstream engine manifest
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $release = gh api repos/BlinkingSun/stl2step/releases/latest | ConvertFrom-Json
-          $asset = $release.assets | Where-Object { $_.name -match '^stl2step-engine-v.*-windows-x64\.zip$' } | Select-Object -First 1
-          if (-not $asset) { throw "No upstream Windows engine asset found in $($release.tag_name)" }
-
-          $download = Join-Path $env:RUNNER_TEMP $asset.name
-          gh release download $release.tag_name --repo BlinkingSun/stl2step --pattern $asset.name --dir $env:RUNNER_TEMP --clobber
-          $extract = Join-Path $env:RUNNER_TEMP 'stl2step-engine'
-          Expand-Archive -LiteralPath $download -DestinationPath $extract -Force
-
-          $destination = Join-Path $env:GITHUB_WORKSPACE 'Stl2StepFreeCAD\bin\windows-x86_64'
-          New-Item -ItemType Directory -Force -Path $destination | Out-Null
-          Get-ChildItem -LiteralPath $destination -File | Remove-Item -Force
-          Get-ChildItem -LiteralPath $extract -File | Copy-Item -Destination $destination -Force
-
-          $exe = Join-Path $destination 'stl2step.exe'
-          if (-not (Test-Path -LiteralPath $exe)) { throw "Extracted release did not contain stl2step.exe" }
-          $version = (& $exe --version | Out-String).Trim()
-          if ($LASTEXITCODE -ne 0 -or $version -notmatch '^stl2step \d+\.\d+\.\d+$') {
-            throw "Engine validation failed (exit $LASTEXITCODE): $version"
-          }
+          $manifestAsset = $release.assets | Where-Object name -eq 'engine-manifest.json' | Select-Object -First 1
+          if (-not $manifestAsset) { throw "No engine-manifest.json found in $($release.tag_name)" }
+          gh release download $release.tag_name --repo BlinkingSun/stl2step --pattern 'engine-manifest.json' --dir $env:RUNNER_TEMP --clobber
+          $manifest = Get-Content -Raw (Join-Path $env:RUNNER_TEMP 'engine-manifest.json') | ConvertFrom-Json
+          $windows = $manifest.assets.'windows-x64'
+          if (-not $windows) { throw "Manifest has no windows-x64 entry" }
+          $config = Get-Content -Raw (Join-Path $env:GITHUB_WORKSPACE 'config\engine-release.json') | ConvertFrom-Json
+          if ($config.tag -eq $release.tag_name -and $config.sha256 -eq $windows.sha256) { exit 0 }
+          @{ upstreamRepository='BlinkingSun/stl2step'; tag=$release.tag_name; engineVersion=$manifest.engineVersion; asset=$windows.name; sha256=$windows.sha256; size=$windows.size } |
+            ConvertTo-Json | Set-Content (Join-Path $env:GITHUB_WORKSPACE 'config\engine-release.json')
           "UPSTREAM_TAG=$($release.tag_name)" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "ENGINE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "ENGINE_VERSION=$($manifest.engineVersion)" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Create update pull request
         id: create-pr

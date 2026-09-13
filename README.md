@@ -22,8 +22,10 @@ dimensions, or parametric feature history.
 
 ## Install on Windows
 
-1. Download this repository with **Code → Download ZIP** and extract it.
-2. Copy the inner `Stl2StepFreeCAD` folder into FreeCAD's user `Mod` directory:
+1. Download the latest add-on ZIP from the repository's
+   [Releases page](https://github.com/cdracars/stl2step-freecad/releases) and
+   extract it.
+2. Copy the included `Stl2StepFreeCAD` folder into FreeCAD's user `Mod` directory:
 
    ```text
    %APPDATA%\FreeCAD\v1-1\Mod
@@ -34,7 +36,9 @@ dimensions, or parametric feature history.
 4. Select **STL to STEP** in the workbench selector.
 
 The copied folder must contain `InitGui.py`, `package.xml`,
-`stl2step_freecad`, `resources`, and `bin`. Do not copy only the Python files.
+`stl2step_freecad`, `resources`, and `bin\windows-x86_64\stl2step.exe` plus
+its DLLs. Do not copy only the Python files. The repository source ZIP is for
+development; use a release ZIP for the bundled engine.
 
 ## Use
 
@@ -89,13 +93,21 @@ Syntax checks:
 python -m py_compile Stl2StepFreeCAD\Init.py Stl2StepFreeCAD\InitGui.py Stl2StepFreeCAD\stl2step_freecad\command.py Stl2StepFreeCAD\stl2step_freecad\engine.py
 ```
 
-With FreeCAD installed, run the real bundled-engine smoke test:
+With FreeCAD installed, vendor the pinned engine first, then run the real
+bundled-engine smoke test:
 
 ```text
+powershell -ExecutionPolicy Bypass -File scripts\vendor-engine.ps1
 "C:\Program Files\FreeCAD 1.1\bin\freecadcmd.exe" tests\freecad_smoke.py
 ```
 
-To refresh the Windows bundle from a local engine build:
+To vendor the pinned, checksum-verified upstream release:
+
+```powershell
+.\scripts\vendor-engine.ps1
+```
+
+To copy a local engine build for development only:
 
 ```powershell
 .\scripts\bundle-engine.ps1 -EngineDirectory 'C:\path\to\engine\bin'
@@ -103,10 +115,12 @@ To refresh the Windows bundle from a local engine build:
 
 ## Automated engine updates
 
-GitHub Actions checks the canonical `BlinkingSun/stl2step` releases weekly. A newer Windows
-bundle is downloaded and validated, then proposed in an automated pull request.
-The workflow enables squash auto-merge after its checks succeed. Review the
-upstream release and binary provenance before changing this policy.
+GitHub Actions checks the canonical `BlinkingSun/stl2step` releases weekly. A
+newer pinned version and its SHA-256/size are proposed in an automated pull
+request. Release packaging downloads the exact pinned upstream ZIP, verifies
+it against the upstream manifest, and includes the unchanged engine bundle in
+the add-on release ZIP. Engine binaries are intentionally not committed to
+this source repository.
 
 ## Licensing
 

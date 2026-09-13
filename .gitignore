@@ -2,3 +2,5 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 tests/stl2step-freecad-smoke-*/
+Stl2StepFreeCAD/bin/windows-x86_64/*
+!Stl2StepFreeCAD/bin/windows-x86_64/.gitkeep
