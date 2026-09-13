@@ -6,12 +6,27 @@ import json
 import os
 import platform
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
 
 class EngineError(RuntimeError):
     """The converter could not be located or did not produce a usable result."""
+
+
+def version(executable: Path) -> str:
+    """Return the version reported by the engine executable."""
+    completed = subprocess.run(
+        [str(executable), "--version"],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise EngineError(f"stl2step version check failed with exit code {completed.returncode}")
+    return completed.stdout.strip()
 
 
 def _bundled_relative_path() -> Path:

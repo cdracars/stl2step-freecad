@@ -14,9 +14,14 @@ class Stl2StepWorkbench(Gui.Workbench):
     def Initialize(self):
         from stl2step_freecad.command import ConvertCommand
 
-        ConvertCommand.install()
+        self._command = ConvertCommand.install()
         self.appendToolbar("STL to STEP", [ConvertCommand.NAME])
         self.appendMenu("STL to STEP", [ConvertCommand.NAME])
+
+    def Deactivated(self):
+        command = getattr(self, "_command", None)
+        if command:
+            command.shutdown()
 
     def GetClassName(self):
         return "Gui::PythonWorkbench"

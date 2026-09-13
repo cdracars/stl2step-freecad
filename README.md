@@ -20,6 +20,11 @@ mode, and receive editable Part geometry in the active FreeCAD document.
 The output is direct B-Rep geometry. It does not recreate sketches, constraints,
 dimensions, or parametric feature history.
 
+For shared behavior and manual validation, see the
+[`ENGINE_CONTRACT.md`](ENGINE_CONTRACT.md),
+[`docs/SCENARIO_MATRIX.md`](docs/SCENARIO_MATRIX.md), and
+[`docs/FREECAD_SMOKE_TEST.md`](docs/FREECAD_SMOKE_TEST.md).
+
 ## Install on Windows
 
 1. Download the latest add-on ZIP from the repository's
