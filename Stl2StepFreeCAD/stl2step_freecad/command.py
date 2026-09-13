@@ -53,16 +53,16 @@ def _result_summary(result: dict) -> str:
 class ConversionProgressDialog(QtWidgets.QDialog):
     """Small non-modal status window for a conversion with unknown duration."""
 
-    def __init__(self, input_stl, mode, parent=None):
+    def __init__(self, input_stl, mode, on_cancel, parent=None):
         super().__init__(parent)
         self.setWindowTitle("STL to STEP — Converting")
         self.setModal(False)
         self.setMinimumWidth(390)
 
         layout = QtWidgets.QVBoxLayout(self)
-        heading = QtWidgets.QLabel("Reconstructing STL geometry")
-        heading.setStyleSheet("font-size: 14px; font-weight: 600;")
-        layout.addWidget(heading)
+        self._heading = QtWidgets.QLabel("Reconstructing STL geometry")
+        self._heading.setStyleSheet("font-size: 14px; font-weight: 600;")
+        layout.addWidget(self._heading)
 
         self._status = QtWidgets.QLabel(
             f"{input_stl.name}  •  {mode.title()} mode"
@@ -78,6 +78,8 @@ class ConversionProgressDialog(QtWidgets.QDialog):
         buttons = QtWidgets.QDialogButtonBox()
         self._hide_button = buttons.addButton("Hide", QtWidgets.QDialogButtonBox.AcceptRole)
         self._hide_button.clicked.connect(self.hide)
+        self._cancel_button = buttons.addButton("Cancel", QtWidgets.QDialogButtonBox.RejectRole)
+        self._cancel_button.clicked.connect(on_cancel)
         layout.addWidget(buttons)
 
         self._seconds = 0
@@ -92,6 +94,15 @@ class ConversionProgressDialog(QtWidgets.QDialog):
         self._activity.setText("The engine is working" + "." * self._dots)
         minutes, seconds = divmod(int(self._seconds), 60)
         self._elapsed.setText(f"Elapsed: {minutes:02d}:{seconds:02d}")
+
+    def set_phase(self, heading, activity):
+        self._heading.setText(heading)
+        self._activity.setText(activity)
+        self._cancel_button.setEnabled(False)
+
+    def set_cancelled(self):
+        self._activity.setText("Cancelling…")
+        self._cancel_button.setEnabled(False)
 
     def closeEvent(self, event):
         event.ignore()
@@ -176,6 +187,7 @@ class ConvertCommand:
         self._document_name = None
         self._source_mesh_name = None
         self._mode = None
+        self._cancel_requested = False
         self._progress_dialog = None
         self._panel = None
 
@@ -202,7 +214,7 @@ class ConvertCommand:
     def _show_progress(self, input_stl, mode):
         try:
             self._progress_dialog = ConversionProgressDialog(
-                input_stl, mode, Gui.getMainWindow()
+                input_stl, mode, self._cancel_conversion, Gui.getMainWindow()
             )
         except Exception as exc:
             App.Console.PrintError(f"stl2step: status window unavailable: {exc}\n")
@@ -214,11 +226,21 @@ class ConvertCommand:
             self._progress_dialog.setMinimumDuration(0)
             self._progress_dialog.setAutoClose(False)
             self._progress_dialog.setAutoReset(False)
-            self._progress_dialog.canceled.connect(self._hide_progress)
+            self._progress_dialog.canceled.connect(self._cancel_conversion)
         self._progress_dialog.show()
         Gui.getMainWindow().statusBar().showMessage(
             f"STL to STEP: converting {input_stl.name} ({mode.title()})..."
         )
+
+    def _cancel_conversion(self):
+        process = self._process
+        if process is None:
+            return
+        self._cancel_requested = True
+        if self._progress_dialog and hasattr(self._progress_dialog, "set_cancelled"):
+            self._progress_dialog.set_cancelled()
+        Gui.getMainWindow().statusBar().showMessage("STL to STEP: cancelling…")
+        process.kill()
 
     def Activated(self):
         if self._process is not None:
@@ -255,6 +277,7 @@ class ConvertCommand:
             return False
         self._document_name = document.Name
         self._mode = mode
+        self._cancel_requested = False
         self._output_step = self._temp_directory / f"{input_stl.stem}.step"
         self._process = QtCore.QProcess(parent)
         self._process.finished.connect(self._finished)
@@ -280,7 +303,14 @@ class ConvertCommand:
         self._process = None
         if process is None:
             return
-        self._hide_progress()
+        if self._cancel_requested:
+            self._hide_progress()
+            self._cleanup()
+            parent.statusBar().showMessage("STL to STEP: conversion cancelled", 10000)
+            QtWidgets.QMessageBox.information(
+                parent, "STL to STEP", "The conversion was cancelled. No source mesh was hidden."
+            )
+            return
         temp_directory = self._temp_directory
         output_step = self._output_step
         stdout = _decode(process.readAllStandardOutput())
@@ -292,6 +322,11 @@ class ConvertCommand:
             App.Console.PrintMessage(f"stl2step stderr: {stderr}\n")
         try:
             result = engine.validate_conversion(stdout, stderr, exit_code, output_step)
+            if self._progress_dialog and hasattr(self._progress_dialog, "set_phase"):
+                self._progress_dialog.set_phase(
+                    "Importing STEP geometry", "FreeCAD is opening the generated STEP file…"
+                )
+            parent.statusBar().showMessage("STL to STEP: importing STEP geometry…")
             try:
                 document = App.getDocument(self._document_name)
             except NameError as exc:
@@ -313,9 +348,11 @@ class ConvertCommand:
             result["mode"] = "TrueForm" if self._mode == "trueform" else "Verbatim"
             result["importedObjects"] = imported_count
             QtWidgets.QMessageBox.information(parent, "STL to STEP", _result_summary(result))
+            self._hide_progress()
             self._cleanup()
         except Exception as exc:
             App.Console.PrintError(f"stl2step: {exc}\n")
+            self._hide_progress()
             parent.statusBar().showMessage(f"STL to STEP failed: {exc}", 15000)
             retained = f"\n\nTemporary files remain at:\n{temp_directory}"
             QtWidgets.QMessageBox.critical(parent, "STL to STEP", f"Could not import the conversion:\n\n{exc}{retained}")
