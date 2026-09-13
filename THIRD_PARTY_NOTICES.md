@@ -7,6 +7,10 @@ The bundled `stl2step.exe` is built from the open-source
 engine is distributed under the MIT License. Its license text is included in
 this repository as `LICENSE.stl2step`.
 
+The executable in this repository is a release binary from the canonical
+upstream project; this repository does not claim ownership of the upstream
+engine source or its implementation.
+
 ## OpenCASCADE Technology (OCCT)
 
 The Windows bundle also contains OCCT runtime libraries required by the engine.

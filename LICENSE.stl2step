@@ -19,9 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-This project links against OpenCASCADE Technology (OCCT), which is licensed
-under the GNU Lesser General Public License, version 2.1, with an additional
-exception. OCCT is a separate dependency. Distributors of binaries that link
-OCCT should review and comply with the OCCT license:
-https://dev.opencascade.org/resources/licensing
