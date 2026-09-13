@@ -30,3 +30,18 @@ class ReleaseArchiveTests(unittest.TestCase):
                 bundle.writestr("LICENSE", "test")
             with self.assertRaises(ValueError):
                 verify_archive(archive)
+
+    def test_rejects_stale_reference_inside_text_file(self):
+        files = [
+            "LICENSE", "LICENSE.stl2step", "README.md", "THIRD_PARTY_NOTICES.md",
+            "config/engine-release.json", "Stl2StepFreeCAD/package.xml",
+            "Stl2StepFreeCAD/bin/windows-x86_64/stl2step.exe",
+            "Stl2StepFreeCAD/bin/windows-x86_64/TKernel.dll",
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / "release.zip"
+            with zipfile.ZipFile(archive, "w") as bundle:
+                for name in files:
+                    bundle.writestr(name, "https://github.com/cdracars/stl2step\n" if name == "README.md" else "test")
+            with self.assertRaises(ValueError):
+                verify_archive(archive)

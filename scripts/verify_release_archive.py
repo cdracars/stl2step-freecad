@@ -28,6 +28,14 @@ def verify_archive(archive: Path, addon_dir: str = "Stl2StepFreeCAD") -> None:
             raise ValueError("archive contains no engine runtime DLLs")
         if any("cdracars/stl2step" in name.lower() or "engine-pin.json" in name.lower() for name in names):
             raise ValueError("archive contains a stale fork or legacy engine pin reference")
+        text_files = (
+            name for name in names
+            if name.lower().endswith((".json", ".md", ".txt", ".xml"))
+        )
+        for name in text_files:
+            contents = bundle.read(name).decode("utf-8", errors="replace").lower()
+            if "cdracars/stl2step" in contents or "engine-pin.json" in contents:
+                raise ValueError(f"archive file contains a stale fork or legacy engine pin reference: {name}")
 
 
 def main() -> int:
