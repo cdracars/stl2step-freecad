@@ -1,7 +1,7 @@
 # STL to STEP Solid for FreeCAD
 
 An open-source FreeCAD workbench that converts STL meshes into STEP B-Rep
-geometry using the [`stl2step`](https://github.com/cdracars/stl2step)
+geometry using the [`stl2step`](https://github.com/BlinkingSun/stl2step)
 engine. Select a mesh or choose an STL file, choose the units and reconstruction
 mode, and receive editable Part geometry in the active FreeCAD document.
 
@@ -103,7 +103,7 @@ To refresh the Windows bundle from a local engine build:
 
 ## Automated engine updates
 
-GitHub Actions checks the upstream `stl2step` releases weekly. A newer Windows
+GitHub Actions checks the canonical `BlinkingSun/stl2step` releases weekly. A newer Windows
 bundle is downloaded and validated, then proposed in an automated pull request.
 The workflow enables squash auto-merge after its checks succeed. Review the
 upstream release and binary provenance before changing this policy.

@@ -3,7 +3,7 @@
 ## stl2step engine
 
 The bundled `stl2step.exe` is built from the open-source
-[`cdracars/stl2step`](https://github.com/cdracars/stl2step) project. The
+[`BlinkingSun/stl2step`](https://github.com/BlinkingSun/stl2step) project. The
 engine is distributed under the MIT License. Its license text is included in
 this repository as `LICENSE` and applies to the add-on and engine integration.
 

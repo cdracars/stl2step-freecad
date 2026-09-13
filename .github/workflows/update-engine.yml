@@ -21,12 +21,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $release = gh api repos/cdracars/stl2step/releases/latest | ConvertFrom-Json
+          $release = gh api repos/BlinkingSun/stl2step/releases/latest | ConvertFrom-Json
           $asset = $release.assets | Where-Object { $_.name -match '^stl2step-engine-v.*-windows-x64\.zip$' } | Select-Object -First 1
           if (-not $asset) { throw "No upstream Windows engine asset found in $($release.tag_name)" }
 
           $download = Join-Path $env:RUNNER_TEMP $asset.name
-          gh release download $release.tag_name --repo cdracars/stl2step --pattern $asset.name --dir $env:RUNNER_TEMP --clobber
+          gh release download $release.tag_name --repo BlinkingSun/stl2step --pattern $asset.name --dir $env:RUNNER_TEMP --clobber
           $extract = Join-Path $env:RUNNER_TEMP 'stl2step-engine'
           Expand-Archive -LiteralPath $download -DestinationPath $extract -Force
 
@@ -52,7 +52,7 @@ jobs:
           commit-message: "Update bundled engine to ${{ env.ENGINE_VERSION }}"
           title: "Update bundled stl2step engine to ${{ env.ENGINE_VERSION }}"
           body: |
-            Automated weekly check against the upstream `cdracars/stl2step` release.
+            Automated weekly check against the canonical upstream `BlinkingSun/stl2step` release.
 
             Upstream release: `${{ env.UPSTREAM_TAG }}`
             Validated executable: `${{ env.ENGINE_VERSION }}`
