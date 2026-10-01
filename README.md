@@ -45,6 +45,20 @@ The copied folder must contain `InitGui.py`, `package.xml`,
 its DLLs. Do not copy only the Python files. The repository source ZIP is for
 development; use a release ZIP for the bundled engine.
 
+## Update an existing installation
+
+1. Close all FreeCAD windows.
+2. Download the newest release ZIP from the
+   [Releases page](https://github.com/cdracars/stl2step-freecad/releases).
+3. Extract it, then replace the existing `Stl2StepFreeCAD` folder in
+   `%APPDATA%\FreeCAD\<version>\Mod` with the folder from the release ZIP.
+4. Start FreeCAD again and select **STL to STEP** from the workbench selector.
+
+Keep the release folder intact, including `bin\windows-x86_64` and its DLLs.
+Do not update by copying individual Python files or by downloading the source
+ZIP. Your documents and FreeCAD files are not affected by replacing the
+add-on folder.
+
 ## Use
 
 1. For an imported mesh, select exactly one mesh object and run **STL to STEP
@@ -85,6 +99,12 @@ $env:STL2STEP_EXECUTABLE = 'C:\path\to\stl2step.exe'
   were reconstructed successfully; the result is still reported explicitly.
 
 ## Development
+
+Maintainers should update the add-on by changing the source, running the tests
+and syntax checks below, updating `Stl2StepFreeCAD/package.xml` and
+`CHANGELOG.md`, and merging to `master`. Publishing a version tag triggers CI
+to vendor the pinned upstream engine, validate the complete archive, and attach
+the release ZIP. Engine binaries should remain out of Git history.
 
 FreeCAD-independent tests:
 

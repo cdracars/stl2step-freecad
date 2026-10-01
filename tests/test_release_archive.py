@@ -45,7 +45,6 @@ class ReleaseArchiveTests(unittest.TestCase):
                     bundle.writestr(name, "https://github.com/cdracars/stl2step\n" if name == "README.md" else "test")
             with self.assertRaises(ValueError):
                 verify_archive(archive)
-
     def test_allows_this_repository_url(self):
         files = [
             "LICENSE", "LICENSE.stl2step", "README.md", "THIRD_PARTY_NOTICES.md",
