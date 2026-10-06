@@ -154,3 +154,8 @@ license is reproduced in [LICENSE.stl2step](LICENSE.stl2step). The bundled OCCT
 runtime libraries have separate LGPL-2.1-with-exception terms. See
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) before redistributing or
 modifying the binary bundle.
+
+## Support
+
+If STL to STEP for FreeCAD is useful to you, you can support its continued
+upkeep on [Ko-fi](https://ko-fi.com/cdracars66494).
