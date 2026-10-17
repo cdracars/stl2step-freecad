@@ -12,7 +12,7 @@ class ReleaseArchiveTests(unittest.TestCase):
     def test_accepts_complete_archive(self):
         files = [
             "LICENSE", "LICENSE.stl2step", "README.md", "THIRD_PARTY_NOTICES.md",
-            "config/engine-release.json", "Stl2StepFreeCAD/package.xml",
+            "Stl2StepFreeCAD/package.xml", "Stl2StepFreeCAD/stl2step_freecad/engine-release.json",
             "Stl2StepFreeCAD/bin/windows-x86_64/stl2step.exe",
             "Stl2StepFreeCAD/bin/windows-x86_64/TKernel.dll",
         ]
@@ -34,7 +34,7 @@ class ReleaseArchiveTests(unittest.TestCase):
     def test_rejects_stale_reference_inside_text_file(self):
         files = [
             "LICENSE", "LICENSE.stl2step", "README.md", "THIRD_PARTY_NOTICES.md",
-            "config/engine-release.json", "Stl2StepFreeCAD/package.xml",
+            "Stl2StepFreeCAD/package.xml", "Stl2StepFreeCAD/stl2step_freecad/engine-release.json",
             "Stl2StepFreeCAD/bin/windows-x86_64/stl2step.exe",
             "Stl2StepFreeCAD/bin/windows-x86_64/TKernel.dll",
         ]
@@ -48,7 +48,7 @@ class ReleaseArchiveTests(unittest.TestCase):
     def test_allows_this_repository_url(self):
         files = [
             "LICENSE", "LICENSE.stl2step", "README.md", "THIRD_PARTY_NOTICES.md",
-            "config/engine-release.json", "Stl2StepFreeCAD/package.xml",
+            "Stl2StepFreeCAD/package.xml", "Stl2StepFreeCAD/stl2step_freecad/engine-release.json",
             "Stl2StepFreeCAD/bin/windows-x86_64/stl2step.exe",
             "Stl2StepFreeCAD/bin/windows-x86_64/TKernel.dll",
         ]

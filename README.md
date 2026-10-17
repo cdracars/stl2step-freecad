@@ -61,6 +61,9 @@ add-on folder.
 
 ## Use
 
+Switching to the **STL to STEP** workbench opens the conversion panel
+automatically. Run **STL to STEP Solid** from the toolbar or menu to reopen it.
+
 1. For an imported mesh, select exactly one mesh object and run **STL to STEP
    Solid**. The workbench exports the selected mesh to a temporary STL.
 2. With no mesh selected, run the command and choose an `.stl` file.
@@ -77,8 +80,11 @@ The adapter resolves the converter in this order:
 
 1. An existing path in `STL2STEP_EXECUTABLE`.
 2. The bundled platform directory, currently
-   `Stl2StepFreeCAD\bin\windows-x86_64\stl2step.exe`.
-3. `stl2step` on `PATH`.
+   `Stl2StepFreeCAD\bin\windows-x86_64\stl2step.exe` (present in release ZIPs).
+3. An engine previously downloaded by the add-on (see below).
+4. `stl2step` on `PATH`.
+
+If none is found, the add-on offers to download the pinned engine.
 
 For development:
 
@@ -86,12 +92,41 @@ For development:
 $env:STL2STEP_EXECUTABLE = 'C:\path\to\stl2step.exe'
 ```
 
+## Network access
+
+The add-on makes no network requests at startup or during conversion. The only
+connection it ever makes is the engine download below, and only after you agree
+to it.
+
+When no engine is found (for example after installing from the Addon Manager,
+which does not include the engine binary), running **STL to STEP Solid** asks
+before downloading anything. The dialog shows the exact URL, size, and install
+location. If you agree:
+
+- The add-on downloads the pinned engine ZIP from the official
+  [`BlinkingSun/stl2step`](https://github.com/BlinkingSun/stl2step) GitHub
+  release named in
+  [`engine-release.json`](Stl2StepFreeCAD/stl2step_freecad/engine-release.json),
+  currently about 16 MB for Windows x64.
+- GitHub receives the request like any browser download. No other data is sent.
+- The ZIP must match the pinned size and SHA-256, unpack without unsafe paths,
+  and report the pinned version before it is used.
+- It is installed in FreeCAD's user data directory under `stl2step-engine`
+  (on Windows, `%APPDATA%\FreeCAD\<version>\stl2step-engine`), outside the
+  add-on folder. Delete that folder to remove it.
+
+Nothing is downloaded again until a newer add-on release pins a new engine
+version. Declining is never remembered; you are asked again next time. Prebuilt
+engines are currently published only for Windows x64; on other platforms, build
+`stl2step` yourself and use `STL2STEP_EXECUTABLE` or `PATH`.
+
 ## Troubleshooting
 
 - If the workbench is missing, confirm the folder is directly inside `Mod` and
   restart FreeCAD.
 - If the engine cannot start, confirm `stl2step.exe` and all DLLs are present
-  in `bin\windows-x86_64`, or set `STL2STEP_EXECUTABLE`.
+  in `bin\windows-x86_64`, or set `STL2STEP_EXECUTABLE`. To force a fresh
+  engine download, delete the `stl2step-engine` folder described above.
 - If conversion or import fails, the error dialog shows a retained temporary
   directory. The FreeCAD Python console reports the engine exit code, output
   path, and stderr.
@@ -115,7 +150,7 @@ python -m unittest discover -s tests
 Syntax checks:
 
 ```text
-python -m py_compile Stl2StepFreeCAD\Init.py Stl2StepFreeCAD\InitGui.py Stl2StepFreeCAD\stl2step_freecad\command.py Stl2StepFreeCAD\stl2step_freecad\engine.py
+python -m py_compile Stl2StepFreeCAD\Init.py Stl2StepFreeCAD\InitGui.py Stl2StepFreeCAD\stl2step_freecad\command.py Stl2StepFreeCAD\stl2step_freecad\engine.py Stl2StepFreeCAD\stl2step_freecad\engine_install.py
 ```
 
 With FreeCAD installed, vendor the pinned engine first, then run the real
@@ -141,10 +176,12 @@ To copy a local engine build for development only:
 ## Automated engine updates
 
 GitHub Actions checks the canonical `BlinkingSun/stl2step` releases weekly. A
-newer pinned version and its SHA-256/size are proposed in an automated pull
-request. Release packaging downloads the exact pinned upstream ZIP, verifies
-it against the upstream manifest, and includes the unchanged engine bundle in
-the add-on release ZIP. Engine binaries are intentionally not committed to
+newer pinned version and its per-platform SHA-256/size are proposed in an
+automated pull request that updates
+`Stl2StepFreeCAD/stl2step_freecad/engine-release.json`. The same pin drives
+both the in-app download and release packaging, which downloads the exact
+pinned upstream ZIP, verifies it against the upstream manifest, and includes
+the unchanged engine bundle in the add-on release ZIP. Engine binaries are intentionally not committed to
 this source repository.
 
 ## Licensing

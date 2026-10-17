@@ -82,6 +82,24 @@ class EngineContractTests(unittest.TestCase):
                 with self.assertRaisesRegex(engine.EngineError, "missing file"):
                     engine.resolve_executable(Path("unused"))
 
+    def test_resolve_prefers_downloaded_engine_over_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            downloaded = Path(directory) / "stl2step.exe"
+            downloaded.touch()
+            with mock.patch.dict(os.environ, {}, clear=True), \
+                    mock.patch.object(engine.shutil, "which", return_value="/usr/bin/stl2step"):
+                self.assertEqual(
+                    engine.resolve_executable(Path(directory) / "addon", downloaded),
+                    downloaded.resolve(),
+                )
+
+    def test_resolve_reports_missing_engine(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.dict(os.environ, {}, clear=True), \
+                    mock.patch.object(engine.shutil, "which", return_value=None):
+                with self.assertRaises(engine.EngineMissing):
+                    engine.resolve_executable(Path(directory), Path(directory) / "missing.exe")
+
 
 if __name__ == "__main__":
     unittest.main()
