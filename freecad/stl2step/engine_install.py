@@ -223,6 +223,18 @@ def _extract(archive: Path, destination: Path) -> None:
         raise InstallError(f"The engine download is not a valid ZIP archive: {exc}") from exc
 
 
+def other_installed_versions(root: Path, pin: dict[str, Any]) -> list[str]:
+    """Return engine versions downloaded earlier that the pin no longer uses."""
+    if not root.is_dir():
+        return []
+    return sorted(
+        child.name for child in root.iterdir()
+        if child.is_dir() and child.name != pin["engineVersion"]
+        and not child.name.startswith(".staging-")
+        and any((platform_dir / MARKER).is_file() for platform_dir in child.iterdir() if platform_dir.is_dir())
+    )
+
+
 def _remove_other_versions(root: Path, current_version: str) -> None:
     for child in root.iterdir():
         if child.is_dir() and child.name != current_version and not child.name.startswith(".staging-"):
