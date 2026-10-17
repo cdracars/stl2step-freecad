@@ -572,19 +572,28 @@ class ConvertCommand:
                 document = App.getDocument(self._document_name)
             except NameError as exc:
                 raise engine.EngineError(f"The starting document is no longer open. The STEP remains at {output_step}.") from exc
-            object_count = len(document.Objects)
+            existing = {obj.Name for obj in document.Objects}
             Import.insert(str(output_step), document.Name)
             document.recompute()
-            imported_count = len(document.Objects) - object_count
+            imported = [obj for obj in document.Objects if obj.Name not in existing]
+            imported_count = len(imported)
             if imported_count <= 0:
                 raise engine.EngineError(
                     "FreeCAD did not create any objects from the generated STEP file. "
                     f"The STEP remains at {output_step}."
                 )
+            label = Path(self._input_name).stem
             if self._source_mesh_name:
                 source = document.getObject(self._source_mesh_name)
                 if source:
+                    label = source.Label
                     source.ViewObject.Visibility = False
+            # The STEP header names the part after the writer ("Open CASCADE
+            # STEP translator ..."); name it after the source instead.
+            imported_names = {obj.Name for obj in imported}
+            for obj in imported:
+                if not any(parent.Name in imported_names for parent in obj.InList):
+                    obj.Label = label
             Gui.activeDocument().activeView().fitAll()
             result["mode"] = _mode_label(self._mode)
             result["importedObjects"] = imported_count
