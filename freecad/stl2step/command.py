@@ -381,7 +381,14 @@ class ConvertCommand:
         box = QtWidgets.QMessageBox(parent)
         box.setWindowTitle("STL to STEP — Download engine")
         box.setIcon(QtWidgets.QMessageBox.Question)
-        box.setText("STL to STEP needs the stl2step engine, which is not installed yet.")
+        older = engine_install.other_installed_versions(root, pin)
+        if older:
+            box.setText(
+                f"This version of STL to STEP uses stl2step {pin['engineVersion']}, "
+                f"which replaces the installed {older[-1]}."
+            )
+        else:
+            box.setText("STL to STEP needs the stl2step engine, which is not installed yet.")
         box.setInformativeText(
             f"Download stl2step {pin['engineVersion']} ({_megabytes(asset['size'])}) from "
             f"the official {repository} release on GitHub?\n\n"

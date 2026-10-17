@@ -1,4 +1,4 @@
-name: Update bundled stl2step engine
+name: Update pinned stl2step engine
 
 on:
   schedule:
@@ -14,13 +14,18 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Check out FreeCAD add-on
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: develop
 
       - name: Check latest upstream engine manifest
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Only platforms the add-on can download and unpack (ZIP archives).
+          # Upstream also publishes e.g. macos-arm64 (.tar.gz) and web-wasm.
+          $supported = @('windows-x64')
           $release = gh api repos/BlinkingSun/stl2step/releases/latest | ConvertFrom-Json
           $manifestAsset = $release.assets | Where-Object name -eq 'engine-manifest.json' | Select-Object -First 1
           if (-not $manifestAsset) { throw "No engine-manifest.json found in $($release.tag_name)" }
@@ -33,6 +38,7 @@ jobs:
           if ($config.tag -eq $release.tag_name -and $config.assets.'windows-x64'.sha256 -eq $windows.sha256) { exit 0 }
           $assets = [ordered]@{}
           foreach ($entry in $manifest.assets.PSObject.Properties) {
+            if ($supported -notcontains $entry.Name) { continue }
             $assets[$entry.Name] = [ordered]@{ name=$entry.Value.name; sha256=$entry.Value.sha256; size=$entry.Value.size }
           }
           [ordered]@{ upstreamRepository='BlinkingSun/stl2step'; tag=$release.tag_name; engineVersion=$manifest.engineVersion; assets=$assets } |
@@ -41,25 +47,24 @@ jobs:
           "ENGINE_VERSION=$($manifest.engineVersion)" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Create update pull request
-        id: create-pr
-        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ github.token }}
-          commit-message: "Update bundled engine to ${{ env.ENGINE_VERSION }}"
-          title: "Update bundled stl2step engine to ${{ env.ENGINE_VERSION }}"
+          base: develop
+          commit-message: "Pin stl2step engine ${{ env.ENGINE_VERSION }}"
+          title: "Pin stl2step engine ${{ env.ENGINE_VERSION }}"
           body: |
-            Automated weekly check against the canonical upstream `BlinkingSun/stl2step` release.
+            Weekly check against the canonical upstream `BlinkingSun/stl2step` release found a newer engine.
 
             Upstream release: `${{ env.UPSTREAM_TAG }}`
-            Validated executable: `${{ env.ENGINE_VERSION }}`
+            Engine version: `${{ env.ENGINE_VERSION }}`
+
+            This only updates the pin in `freecad/stl2step/engine-release.json`. Users get the new engine
+            after the next release: Addon Manager and git installs are prompted to download it, and the
+            release ZIP bundles it.
+
+            CI does not run on this pull request automatically, because it was opened with the workflow
+            token. Merging it runs the Tests workflow on `develop`, which downloads this engine and checks
+            its size, SHA-256 and version. To check before merging, run `scripts/vendor-engine.ps1` locally.
           branch: automation/update-engine
           delete-branch: true
-
-      - name: Enable automatic merge
-        if: steps.create-pr.outputs.pull-request-number != ''
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh pr merge ${{ steps.create-pr.outputs.pull-request-number }} `
-            --repo $env:GITHUB_REPOSITORY --auto --squash --delete-branch

@@ -187,6 +187,20 @@ class EngineInstallTests(unittest.TestCase):
         self.assertEqual(executable.read_bytes(), b"newer engine")
         self.assertEqual(sorted(path.name for path in self.root.iterdir()), ["1.5.0"])
 
+    def test_reports_older_installed_versions(self):
+        old_data = make_archive()
+        old_pin = make_pin(old_data, version="1.4.3")
+        self.assertEqual(engine_install.other_installed_versions(self.root, old_pin), [])
+        self.install(old_data, old_pin)
+        self.assertEqual(engine_install.other_installed_versions(self.root, old_pin), [])
+        new_pin = make_pin(make_archive({"stl2step.exe": b"newer"}), version="1.5.0")
+        self.assertEqual(engine_install.other_installed_versions(self.root, new_pin), ["1.4.3"])
+
+    def test_ignores_incomplete_older_versions(self):
+        (self.root / "1.4.3" / "windows-x86_64").mkdir(parents=True)
+        new_pin = make_pin(make_archive(), version="1.5.0")
+        self.assertEqual(engine_install.other_installed_versions(self.root, new_pin), [])
+
     def test_install_without_marker_is_not_trusted(self):
         data = make_archive()
         pin = make_pin(data)
