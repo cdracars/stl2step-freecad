@@ -51,6 +51,33 @@ def _mode_label(mode: str) -> str:
     return "TrueForm" if mode == "trueform" else "Verbatim"
 
 
+def _qt_https_available() -> bool:
+    try:
+        from PySide import QtNetwork
+
+        return bool(QtNetwork.QSslSocket.supportsSsl())
+    except Exception:
+        return False
+
+
+def _follow_safe_redirects(QtNetwork, manager):
+    # GitHub release downloads redirect to an HTTPS asset host. Qt 6 follows
+    # such redirects by default and Qt 5 does not, so set it on the manager.
+    # (Setting it as a per-request attribute stops PySide6 from following.)
+    Request = QtNetwork.QNetworkRequest
+    policy = getattr(Request, "NoLessSafeRedirectPolicy", None)
+    if policy is None:
+        policy = Request.RedirectPolicy.NoLessSafeRedirectPolicy
+    manager.setRedirectPolicy(policy)
+
+
+def _network_no_error(QtNetwork):
+    no_error = getattr(QtNetwork.QNetworkReply, "NoError", None)
+    if no_error is None:
+        no_error = QtNetwork.QNetworkReply.NetworkError.NoError
+    return no_error
+
+
 def _megabytes(size: int) -> str:
     return f"{size / (1024 * 1024):.1f} MB"
 
@@ -417,11 +444,111 @@ class ConvertCommand:
         progress.setMinimumDuration(0)
         progress.setAutoClose(False)
         progress.setAutoReset(False)
+        self._download = {"dialog": progress, "version": pin["engineVersion"], "stop": None}
+        url = engine_install.download_url(pin, asset)
+        App.Console.PrintMessage(f"stl2step: downloading {url}\n")
+        progress.show()
+        if _qt_https_available():
+            self._start_qt_download(root, pin, asset, url)
+        else:
+            # Fallback for Qt builds without TLS support.
+            self._start_thread_download(root, pin)
+
+    def _show_download_progress(self, received, total):
+        download = self._download
+        if download is None:
+            return
+        dialog = download["dialog"]
+        total = max(1, total)
+        if received < total:
+            dialog.setLabelText(
+                f"Downloading stl2step {download['version']}…\n"
+                f"{_megabytes(received)} of {_megabytes(total)}"
+            )
+            dialog.setValue(int(received * 100 / total))
+        else:
+            dialog.setLabelText("Verifying and installing the engine…")
+            dialog.setValue(100)
+
+    def _start_qt_download(self, root, pin, asset, url):
+        # Qt runs the transfer itself and calls back on the GUI thread, so
+        # FreeCAD keeps repainting. A Python worker thread competes with the
+        # GUI for the interpreter lock and froze the window.
+        from PySide import QtNetwork
+
+        download = self._download
+        expected = int(asset["size"])
+        staging = engine_install.new_staging(root)
+        archive = staging / asset["name"]
+        handle = archive.open("wb")
+        state = {"received": 0, "cancelled": False, "too_large": False, "finished": False}
+
+        manager = QtNetwork.QNetworkAccessManager(download["dialog"])
+        _follow_safe_redirects(QtNetwork, manager)
+        request = QtNetwork.QNetworkRequest(QtCore.QUrl(url))
+        request.setRawHeader(b"User-Agent", b"stl2step-freecad")
+        if hasattr(request, "setTransferTimeout"):
+            request.setTransferTimeout(30000)
+        reply = manager.get(request)
+
+        def on_ready_read():
+            data = reply.readAll().data()
+            state["received"] += len(data)
+            if state["received"] > expected:
+                state["too_large"] = True
+                reply.abort()
+                return
+            handle.write(data)
+
+        def cancel():
+            if not state["finished"]:
+                state["cancelled"] = True
+                reply.abort()
+
+        def on_finished():
+            state["finished"] = True
+            handle.close()
+            succeeded = reply.error() == _network_no_error(QtNetwork)
+            message = reply.errorString()
+            reply.deleteLater()
+            result = error = None
+            if self._download is not download:
+                pass  # Stopped by shutdown; just clean up.
+            elif state["cancelled"]:
+                error = engine_install.InstallCancelled("The engine download was cancelled.")
+            elif state["too_large"]:
+                error = engine_install.InstallError(
+                    f"The engine download is larger than the pinned {expected} bytes."
+                )
+            elif not succeeded:
+                error = engine_install.InstallError(f"Could not download the engine from {url}: {message}")
+            else:
+                self._show_download_progress(expected, expected)
+                QtWidgets.QApplication.processEvents()
+                try:
+                    result = engine_install.install_archive(
+                        root, pin, archive, staging, version_of=engine.version
+                    )
+                except Exception as exc:
+                    error = exc
+            shutil.rmtree(staging, ignore_errors=True)
+            if self._download is download:
+                self._finish_download(result, error)
+
+        reply.readyRead.connect(on_ready_read)
+        reply.downloadProgress.connect(lambda received, _total: self._show_download_progress(received, expected))
+        reply.finished.connect(on_finished)
+        download["dialog"].canceled.connect(cancel)
+        download["stop"] = cancel
+
+    def _start_thread_download(self, root, pin):
         cancel_event = threading.Event()
-        progress.canceled.connect(cancel_event.set)
+        download = self._download
+        download["dialog"].canceled.connect(cancel_event.set)
+        download["stop"] = cancel_event.set
 
         # The worker only writes plain values here; the GUI thread polls them.
-        state = {"received": 0, "total": int(asset["size"]), "result": None, "error": None, "done": False}
+        state = {"received": 0, "total": 1, "result": None, "error": None, "done": False}
 
         def work():
             try:
@@ -436,38 +563,23 @@ class ConvertCommand:
             finally:
                 state["done"] = True
 
-        timer = QtCore.QTimer(progress)
-        timer.timeout.connect(self._poll_download)
-        self._download = {
-            "state": state, "cancel": cancel_event, "dialog": progress,
-            "timer": timer, "version": pin["engineVersion"],
-        }
-        progress.show()
-        App.Console.PrintMessage(f"stl2step: downloading {engine_install.download_url(pin, asset)}\n")
+        def poll():
+            if self._download is not download:
+                timer.stop()
+                return
+            self._show_download_progress(state["received"], state["total"])
+            if state["done"]:
+                timer.stop()
+                self._finish_download(state["result"], state["error"])
+
+        timer = QtCore.QTimer(download["dialog"])
+        timer.timeout.connect(poll)
         threading.Thread(target=work, name="stl2step-engine-download", daemon=True).start()
         timer.start(100)
 
-    def _poll_download(self):
-        download = self._download
-        if download is None:
-            return
-        state, dialog = download["state"], download["dialog"]
-        received, total = state["received"], max(1, state["total"])
-        if received < total:
-            dialog.setLabelText(
-                f"Downloading stl2step {download['version']}…\n"
-                f"{_megabytes(received)} of {_megabytes(total)}"
-            )
-            dialog.setValue(int(received * 100 / total))
-        else:
-            dialog.setLabelText("Verifying and installing the engine…")
-            dialog.setValue(100)
-        if not state["done"]:
-            return
-
+    def _finish_download(self, result, error):
         self._stop_download()
         parent = Gui.getMainWindow()
-        error = state["error"]
         if isinstance(error, engine_install.InstallCancelled):
             App.Console.PrintMessage("stl2step: engine download cancelled\n")
             return
@@ -476,7 +588,7 @@ class ConvertCommand:
                 parent, "STL to STEP", f"Could not install the stl2step engine:\n\n{error}"
             )
             return
-        App.Console.PrintMessage(f"stl2step: installed engine at {state['result']}\n")
+        App.Console.PrintMessage(f"stl2step: installed engine at {result}\n")
         if not self._shutting_down:
             self._open_panel()
 
@@ -484,8 +596,8 @@ class ConvertCommand:
         download, self._download = self._download, None
         if download is None:
             return
-        download["cancel"].set()
-        download["timer"].stop()
+        if download["stop"]:
+            download["stop"]()
         download["dialog"].close()
         download["dialog"].deleteLater()
 
