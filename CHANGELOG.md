@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.1
+
+- Updated the pinned engine to stl2step 1.5.0. Fillets between planes are now
+  recovered as cylinders and hole chamfers or countersinks as cones, and
+  hexagonal holes stay planar. Installs that downloaded 1.4.3 are asked once
+  to download 1.5.0; release ZIPs bundle it.
+- The engine download prompt now says when the new engine replaces an older
+  downloaded one.
+- Added a Test report issue form, linked from the README, for sharing how the
+  add-on worked for you.
+- Fixed the weekly engine-pin workflow, which now pins only platforms the
+  add-on can install (Windows x64).
+
 ## 0.6.0
 
 **Upgrading:** the add-on folder changed from `Stl2StepFreeCAD` to
