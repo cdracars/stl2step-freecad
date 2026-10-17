@@ -149,6 +149,15 @@ engines are currently published only for Windows x64; on other platforms, build
 - A warning may mean that one component stayed faceted while other components
   were reconstructed successfully; the result is still reported explicitly.
 
+## Tried it? Leave a test report
+
+Whether it worked perfectly or not, a quick
+[test report](https://github.com/cdracars/stl2step-freecad/issues/new?template=test_report.yml)
+helps: it takes about a minute and shows which FreeCAD versions, systems, and
+models the add-on has been tried on. Everyone's reports are listed under the
+[`test-report`](https://github.com/cdracars/stl2step-freecad/issues?q=label%3Atest-report)
+label. For a problem you can reproduce, please also open a bug report.
+
 ## Development
 
 Day-to-day work happens on `develop`; `main` holds released versions only, and

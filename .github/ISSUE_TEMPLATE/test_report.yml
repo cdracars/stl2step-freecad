@@ -1,0 +1,89 @@
+name: Test report
+description: Tell us you tried the add-on and how it went, even if everything worked.
+title: "[Test]: "
+labels: [test-report]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for trying STL to STEP. Reports where everything worked are just as useful as ones where something didn't.
+        If something broke, please also open a **Bug report** with the details and link it below.
+  - type: input
+    id: addon-version
+    attributes:
+      label: Add-on version
+      description: Shown in the Addon Manager, or in package.xml in the add-on folder.
+      placeholder: 0.6.0
+    validations:
+      required: true
+  - type: input
+    id: freecad
+    attributes:
+      label: FreeCAD version
+      placeholder: 1.1.3
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system
+      placeholder: Windows 11 x64
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install it?
+      options:
+        - Addon Manager
+        - Git clone into Mod
+        - Release ZIP
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Engine setup
+      description: Without a release ZIP, the add-on asks before downloading its engine the first time.
+      options:
+        - The download prompt appeared and the download worked
+        - The download prompt appeared but the download failed
+        - I used the engine bundled in the release ZIP
+        - I used my own engine (PATH or STL2STEP_EXECUTABLE)
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Conversion mode
+      options:
+        - TrueForm
+        - Verbatim
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: What did you convert?
+      description: A short description is enough. Don't attach proprietary models.
+      placeholder: "Printed bracket, about 20,000 triangles"
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - Worked as expected
+        - Worked, with warnings or rough spots
+        - Didn't work
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything else, such as conversion time, warnings, what felt confusing, or a link to a bug report. Screenshots welcome.
