@@ -120,58 +120,134 @@ def download_and_install(
     is never mistaken for a valid one.
     """
     key = key or platform_key()
-    asset = pinned_asset(pin, key)
-    if not asset:
-        raise InstallError(f"No prebuilt stl2step engine is published for {key}.")
+    asset = required_asset(pin, key)
     existing = installed_executable(root, pin, key)
     if existing:
         return existing
 
     url = download_url(pin, asset)
-    if urlparse(url).scheme != "https":
-        raise InstallError(f"Refusing to download the engine over a non-HTTPS URL: {url}")
-
-    root.mkdir(parents=True, exist_ok=True)
-    staging = root / f".staging-{uuid.uuid4().hex}"
-    staging.mkdir()
+    staging = new_staging(root)
     try:
         archive = staging / asset["name"]
         _download(url, archive, asset, progress, cancelled, opener)
-        extracted = staging / "engine"
-        _extract(archive, extracted)
-
-        executable = extracted / executable_name(key)
-        if not executable.is_file():
-            raise InstallError(f"The engine archive did not contain {executable.name}.")
-        if not key.startswith("windows-"):
-            executable.chmod(executable.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-        try:
-            reported = version_of(executable).strip()
-        except Exception as exc:
-            raise InstallError(f"The downloaded engine could not run: {exc}") from exc
-        expected = f"stl2step {pin['engineVersion']}"
-        if reported != expected:
-            raise InstallError(f"The downloaded engine reported '{reported}', expected '{expected}'.")
-
-        target = install_directory(root, pin, key)
-        if target.exists():
-            shutil.rmtree(target)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        os.replace(extracted, target)
-        (target / MARKER).write_text(
-            json.dumps({"tag": pin["tag"], "sha256": asset["sha256"].lower()}),
-            encoding="utf-8",
-        )
+        return install_archive(root, pin, archive, staging, version_of=version_of, key=key)
     finally:
         shutil.rmtree(staging, ignore_errors=True)
 
+
+def required_asset(pin: dict[str, Any], key: Optional[str] = None) -> dict[str, Any]:
+    """Return this platform's pinned asset, checking it can be fetched safely."""
+    key = key or platform_key()
+    asset = pinned_asset(pin, key)
+    if not asset:
+        raise InstallError(f"No prebuilt stl2step engine is published for {key}.")
+    url = download_url(pin, asset)
+    if urlparse(url).scheme != "https":
+        raise InstallError(f"Refusing to download the engine over a non-HTTPS URL: {url}")
+    return asset
+
+
+def new_staging(root: Path) -> Path:
+    """Create a private folder for one download; the caller removes it."""
+    root.mkdir(parents=True, exist_ok=True)
+    staging = root / f".staging-{uuid.uuid4().hex}"
+    staging.mkdir()
+    return staging
+
+
+def install_archive(
+    root: Path,
+    pin: dict[str, Any],
+    archive: Path,
+    staging: Path,
+    *,
+    version_of: Callable[[Path], str],
+    key: Optional[str] = None,
+) -> Path:
+    """Verify a downloaded engine archive and install it; return its executable.
+
+    Used after any download method. The archive must match the pinned size and
+    SHA-256, unpack without unsafe paths into ``staging``, and report the
+    pinned version before it is moved into place. Callers that must not block
+    while the engine runs can use stage_archive and commit_install directly.
+    """
+    executable = stage_archive(pin, archive, staging, key=key)
+    try:
+        reported = version_of(executable)
+    except Exception as exc:
+        raise InstallError(f"The downloaded engine could not run: {exc}") from exc
+    return commit_install(root, pin, executable, reported, key=key)
+
+
+def stage_archive(
+    pin: dict[str, Any], archive: Path, staging: Path, *, key: Optional[str] = None
+) -> Path:
+    """Verify the archive and unpack it into ``staging``; return the engine to check."""
+    key = key or platform_key()
+    asset = required_asset(pin, key)
+    _verify_archive(archive, asset)
+    extracted = staging / "engine"
+    _extract(archive, extracted)
+
+    executable = extracted / executable_name(key)
+    if not executable.is_file():
+        raise InstallError(f"The engine archive did not contain {executable.name}.")
+    if not key.startswith("windows-"):
+        executable.chmod(executable.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    return executable
+
+
+def commit_install(
+    root: Path,
+    pin: dict[str, Any],
+    executable: Path,
+    reported_version: str,
+    *,
+    key: Optional[str] = None,
+) -> Path:
+    """Install a staged engine once its ``--version`` output matches the pin."""
+    key = key or platform_key()
+    asset = required_asset(pin, key)
+    reported = reported_version.strip()
+    expected = f"stl2step {pin['engineVersion']}"
+    if reported != expected:
+        raise InstallError(f"The downloaded engine reported '{reported}', expected '{expected}'.")
+
+    extracted = executable.parent
+    target = install_directory(root, pin, key)
+    if target.exists():
+        shutil.rmtree(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    os.replace(extracted, target)
+    (target / MARKER).write_text(
+        json.dumps({"tag": pin["tag"], "sha256": asset["sha256"].lower()}),
+        encoding="utf-8",
+    )
     _remove_other_versions(root, pin["engineVersion"])
     return target / executable_name(key)
 
 
-def _download(url, archive, asset, progress, cancelled, opener) -> None:
+def _verify_archive(archive: Path, asset: dict[str, Any]) -> None:
     expected_size = int(asset["size"])
+    actual_size = archive.stat().st_size if archive.is_file() else 0
+    if actual_size != expected_size:
+        raise InstallError(
+            f"The engine download was {actual_size} bytes, expected {expected_size}."
+        )
     digest = hashlib.sha256()
+    with archive.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    actual = digest.hexdigest()
+    if actual != asset["sha256"].lower():
+        raise InstallError(
+            f"The engine download failed its SHA-256 check (expected {asset['sha256']}, got {actual})."
+        )
+
+
+def _download(url, archive, asset, progress, cancelled, opener) -> None:
+    """Stream the archive to disk; install_archive verifies it afterwards."""
+    expected_size = int(asset["size"])
     received = 0
     request = Request(url, headers={"User-Agent": "stl2step-freecad"})
     try:
@@ -188,21 +264,11 @@ def _download(url, archive, asset, progress, cancelled, opener) -> None:
                     raise InstallError(
                         f"The engine download is larger than the pinned {expected_size} bytes."
                     )
-                digest.update(chunk)
                 handle.write(chunk)
                 if progress:
                     progress(received, expected_size)
     except OSError as exc:
         raise InstallError(f"Could not download the engine from {url}: {exc}") from exc
-    if received != expected_size:
-        raise InstallError(
-            f"The engine download was {received} bytes, expected {expected_size}."
-        )
-    actual = digest.hexdigest()
-    if actual != asset["sha256"].lower():
-        raise InstallError(
-            f"The engine download failed its SHA-256 check (expected {asset['sha256']}, got {actual})."
-        )
 
 
 def _extract(archive: Path, destination: Path) -> None:

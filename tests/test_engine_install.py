@@ -187,6 +187,43 @@ class EngineInstallTests(unittest.TestCase):
         self.assertEqual(executable.read_bytes(), b"newer engine")
         self.assertEqual(sorted(path.name for path in self.root.iterdir()), ["1.5.0"])
 
+    def test_install_archive_from_another_download_method(self):
+        data = make_archive()
+        pin = make_pin(data)
+        staging = engine_install.new_staging(self.root)
+        archive = staging / "engine.zip"
+        archive.write_bytes(data)
+        executable = engine_install.install_archive(
+            self.root, pin, archive, staging, version_of=lambda e: "stl2step 1.4.3", key=KEY
+        )
+        self.assertEqual(engine_install.installed_executable(self.root, pin, KEY), executable)
+
+    def test_install_archive_rejects_tampered_file(self):
+        data = make_archive()
+        pin = make_pin(data)
+        staging = engine_install.new_staging(self.root)
+        archive = staging / "engine.zip"
+        archive.write_bytes(data[:-1] + b"x")
+        with self.assertRaisesRegex(engine_install.InstallError, "SHA-256"):
+            engine_install.install_archive(
+                self.root, pin, archive, staging, version_of=lambda e: "stl2step 1.4.3", key=KEY
+            )
+        self.assertIsNone(engine_install.installed_executable(self.root, pin, KEY))
+
+    def test_stage_then_commit_installs_after_version_check(self):
+        data = make_archive()
+        pin = make_pin(data)
+        staging = engine_install.new_staging(self.root)
+        archive = staging / "engine.zip"
+        archive.write_bytes(data)
+        executable = engine_install.stage_archive(pin, archive, staging, key=KEY)
+        self.assertIsNone(engine_install.installed_executable(self.root, pin, KEY))
+        with self.assertRaisesRegex(engine_install.InstallError, "expected 'stl2step 1.4.3'"):
+            engine_install.commit_install(self.root, pin, executable, "stl2step 0.0.1", key=KEY)
+        self.assertIsNone(engine_install.installed_executable(self.root, pin, KEY))
+        installed = engine_install.commit_install(self.root, pin, executable, "stl2step 1.4.3\r\n", key=KEY)
+        self.assertEqual(engine_install.installed_executable(self.root, pin, KEY), installed)
+
     def test_reports_older_installed_versions(self):
         old_data = make_archive()
         old_pin = make_pin(old_data, version="1.4.3")
