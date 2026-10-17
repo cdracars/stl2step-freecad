@@ -1,13 +1,24 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
+**Upgrading:** the add-on folder changed from `Stl2StepFreeCAD` to
+`stl2step-freecad`. Delete the old `Mod\Stl2StepFreeCAD` folder before
+installing; see the README.
+
+- Moved to FreeCAD's namespaced add-on layout (`freecad/stl2step`), with
+  `package.xml` at the repository root so the Addon Manager can install it.
+- Release ZIPs now contain a single `stl2step-freecad` folder to extract into `Mod`.
+- Raised the minimum FreeCAD version to 1.0.
 - Added a consent-gated download of the pinned engine when none is installed,
   verified by size, SHA-256, safe unpacking, and engine version before use.
 - Moved the engine pin into the add-on as
-  `stl2step_freecad/engine-release.json`, with assets keyed by platform.
+  `freecad/stl2step/engine-release.json`, with assets keyed by platform.
 - Fixed the task panel crashing on FreeCAD builds that use PySide6.
 - Switching to the workbench now opens the conversion panel automatically.
+- New workbench icon, also shown in the task panel header.
+- Imported objects are named after the source STL instead of the STEP writer.
+- Warns in the report view if an old `Stl2StepFreeCAD` copy is still installed.
 
 ## 0.5.0
 

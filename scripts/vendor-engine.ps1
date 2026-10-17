@@ -6,8 +6,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-if (-not $Config) { $Config = Join-Path $scriptRoot '..\Stl2StepFreeCAD\stl2step_freecad\engine-release.json' }
-if (-not $Destination) { $Destination = Join-Path $scriptRoot '..\Stl2StepFreeCAD\bin\windows-x86_64' }
+if (-not $Config) { $Config = Join-Path $scriptRoot '..\freecad\stl2step\engine-release.json' }
+if (-not $Destination) { $Destination = Join-Path $scriptRoot '..\freecad\stl2step\bin\windows-x86_64' }
 $configPath = (Resolve-Path -LiteralPath $Config).Path
 $releaseSpec = Get-Content -Raw -LiteralPath $configPath | ConvertFrom-Json
 $repository = $releaseSpec.upstreamRepository

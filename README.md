@@ -25,39 +25,55 @@ For shared behavior and manual validation, see the
 [`docs/SCENARIO_MATRIX.md`](docs/SCENARIO_MATRIX.md), and
 [`docs/FREECAD_SMOKE_TEST.md`](docs/FREECAD_SMOKE_TEST.md).
 
-## Install on Windows
+## Install
 
-1. Download the latest add-on ZIP from the repository's
-   [Releases page](https://github.com/cdracars/stl2step-freecad/releases) and
-   extract it.
-2. Copy the included `Stl2StepFreeCAD` folder into FreeCAD's user `Mod` directory:
+Requires FreeCAD 1.0 or newer.
 
-   ```text
-   %APPDATA%\FreeCAD\v1-1\Mod
-   ```
+### With git (works like the Addon Manager)
 
-   Use the matching versioned directory for another FreeCAD release.
-3. Restart FreeCAD.
-4. Select **STL to STEP** in the workbench selector.
+Clone the repository into FreeCAD's user `Mod` directory, then restart FreeCAD:
 
-The copied folder must contain `InitGui.py`, `package.xml`,
-`stl2step_freecad`, `resources`, and `bin\windows-x86_64\stl2step.exe` plus
-its DLLs. Do not copy only the Python files. The repository source ZIP is for
-development; use a release ZIP for the bundled engine.
+```bash
+git clone https://github.com/cdracars/stl2step-freecad "%APPDATA%\FreeCAD\v1-1\Mod\stl2step-freecad"
+```
+
+Use the matching versioned directory for another FreeCAD release. A clone does
+not include the engine; the first time you run the tool, it offers to download
+it (see [Network access](#network-access)).
+
+### From a release ZIP (Windows, works offline)
+
+1. Download the latest `stl2step-freecad-<version>.zip` from the
+   [Releases page](https://github.com/cdracars/stl2step-freecad/releases).
+2. Extract it so the `stl2step-freecad` folder lands directly in FreeCAD's
+   user `Mod` directory, for example `%APPDATA%\FreeCAD\v1-1\Mod\stl2step-freecad`.
+3. Restart FreeCAD and select **STL to STEP** in the workbench selector.
+
+The release ZIP bundles the engine in
+`freecad\stl2step\bin\windows-x86_64`, so no download is needed. Keep the
+folder intact; don't copy only the Python files.
 
 ## Update an existing installation
 
-1. Close all FreeCAD windows.
-2. Download the newest release ZIP from the
-   [Releases page](https://github.com/cdracars/stl2step-freecad/releases).
-3. Extract it, then replace the existing `Stl2StepFreeCAD` folder in
-   `%APPDATA%\FreeCAD\<version>\Mod` with the folder from the release ZIP.
-4. Start FreeCAD again and select **STL to STEP** from the workbench selector.
+- **Git install:** close FreeCAD, run `git pull` in the add-on folder, then
+  start FreeCAD again.
+- **Release ZIP:** close FreeCAD, delete `Mod\stl2step-freecad`, extract the
+  newest release ZIP in its place, then start FreeCAD again.
 
-Keep the release folder intact, including `bin\windows-x86_64` and its DLLs.
-Do not update by copying individual Python files or by downloading the source
-ZIP. Your documents and FreeCAD files are not affected by replacing the
-add-on folder.
+Your documents, saved settings, and any downloaded engine are not affected.
+
+### Upgrading from 0.5.x or earlier
+
+Version 0.6.0 moved to FreeCAD's namespaced add-on layout, so the add-on folder
+changed from `Stl2StepFreeCAD` to `stl2step-freecad`.
+
+1. Close FreeCAD.
+2. Delete the old `%APPDATA%\FreeCAD\<version>\Mod\Stl2StepFreeCAD` folder.
+3. Install 0.6.0 using either method above.
+
+If the old folder is still present, FreeCAD's report view shows a warning,
+because both copies register the same workbench. Your units and mode settings
+carry over.
 
 ## Use
 
@@ -80,7 +96,7 @@ The adapter resolves the converter in this order:
 
 1. An existing path in `STL2STEP_EXECUTABLE`.
 2. The bundled platform directory, currently
-   `Stl2StepFreeCAD\bin\windows-x86_64\stl2step.exe` (present in release ZIPs).
+   `freecad\stl2step\bin\windows-x86_64\stl2step.exe` (present in release ZIPs).
 3. An engine previously downloaded by the add-on (see below).
 4. `stl2step` on `PATH`.
 
@@ -106,7 +122,7 @@ location. If you agree:
 - The add-on downloads the pinned engine ZIP from the official
   [`BlinkingSun/stl2step`](https://github.com/BlinkingSun/stl2step) GitHub
   release named in
-  [`engine-release.json`](Stl2StepFreeCAD/stl2step_freecad/engine-release.json),
+  [`engine-release.json`](freecad/stl2step/engine-release.json),
   currently about 16 MB for Windows x64.
 - GitHub receives the request like any browser download. No other data is sent.
 - The ZIP must match the pinned size and SHA-256, unpack without unsafe paths,
@@ -136,7 +152,7 @@ engines are currently published only for Windows x64; on other platforms, build
 ## Development
 
 Maintainers should update the add-on by changing the source, running the tests
-and syntax checks below, updating `Stl2StepFreeCAD/package.xml` and
+and syntax checks below, updating `package.xml` and
 `CHANGELOG.md`, and merging to `master`. Publishing a version tag triggers CI
 to vendor the pinned upstream engine, validate the complete archive, and attach
 the release ZIP. Engine binaries should remain out of Git history.
@@ -150,7 +166,7 @@ python -m unittest discover -s tests
 Syntax checks:
 
 ```text
-python -m py_compile Stl2StepFreeCAD\Init.py Stl2StepFreeCAD\InitGui.py Stl2StepFreeCAD\stl2step_freecad\command.py Stl2StepFreeCAD\stl2step_freecad\engine.py Stl2StepFreeCAD\stl2step_freecad\engine_install.py
+python -m py_compile freecad\stl2step\__init__.py freecad\stl2step\init_gui.py freecad\stl2step\command.py freecad\stl2step\engine.py freecad\stl2step\engine_install.py
 ```
 
 With FreeCAD installed, vendor the pinned engine first, then run the real
@@ -178,7 +194,7 @@ To copy a local engine build for development only:
 GitHub Actions checks the canonical `BlinkingSun/stl2step` releases weekly. A
 newer pinned version and its per-platform SHA-256/size are proposed in an
 automated pull request that updates
-`Stl2StepFreeCAD/stl2step_freecad/engine-release.json`. The same pin drives
+`freecad/stl2step/engine-release.json`. The same pin drives
 both the in-app download and release packaging, which downloads the exact
 pinned upstream ZIP, verifies it against the upstream manifest, and includes
 the unchanged engine bundle in the add-on release ZIP. Engine binaries are intentionally not committed to

@@ -7,7 +7,7 @@ from unittest import mock
 from pathlib import Path
 
 
-ENGINE_PATH = Path(__file__).parents[1] / "Stl2StepFreeCAD" / "stl2step_freecad" / "engine.py"
+ENGINE_PATH = Path(__file__).parents[1] / "freecad" / "stl2step" / "engine.py"
 SPEC = importlib.util.spec_from_file_location("stl2step_freecad_engine", ENGINE_PATH)
 engine = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(engine)

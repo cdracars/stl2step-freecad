@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $EngineDirectory,
 
-    [string] $Destination = (Join-Path $PSScriptRoot '..\Stl2StepFreeCAD\bin\windows-x86_64')
+    [string] $Destination = (Join-Path $PSScriptRoot '..\freecad\stl2step\bin\windows-x86_64')
 )
 
 $ErrorActionPreference = 'Stop'
