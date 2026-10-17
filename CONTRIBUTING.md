@@ -30,6 +30,25 @@ platform bundle from a validated upstream build.
 
 ## Pull requests
 
-Keep changes focused, explain user-visible behavior, and update the README or
-tests when behavior changes. Pull requests should pass CI and must not include
-unrelated generated files, local paths, or proprietary assets.
+Open pull requests against `develop`, the default branch. Keep changes
+focused, explain user-visible behavior, and update the README or tests when
+behavior changes. Pull requests should pass CI and must not include unrelated
+generated files, local paths, or proprietary assets.
+
+## Branches and releases
+
+- `develop` is where work lands. Feature and fix branches start from it and
+  merge back into it.
+- `main` holds released versions only. The FreeCAD Addon Manager installs from
+  `main` (`package.xml` names it in `<url type="repository" branch="main">`), so
+  anything merged there reaches users.
+- The weekly engine-update workflow opens its pull request against `develop`.
+
+To release:
+
+1. On `develop`, bump `<version>` and `<date>` in `package.xml` and move the
+   `CHANGELOG.md` entries under the new version. The Addon Manager compares
+   these to offer updates, so bump them on every release.
+2. Open a pull request from `develop` into `main` and merge it once CI passes.
+3. Publish a GitHub release tagged `v<version>` targeting `main`. CI attaches
+   the verified `stl2step-freecad-v<version>.zip`; check that it's there.

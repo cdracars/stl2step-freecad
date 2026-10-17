@@ -8,9 +8,9 @@
   <maintainer email="cdracars@gmail.com">Cody Dracars</maintainer>
   <author>Cody Dracars</author>
   <license file="LICENSE">MIT</license>
-  <url type="repository" branch="master">https://github.com/cdracars/stl2step-freecad</url>
+  <url type="repository" branch="main">https://github.com/cdracars/stl2step-freecad</url>
   <url type="bugtracker">https://github.com/cdracars/stl2step-freecad/issues</url>
-  <url type="readme">https://raw.githubusercontent.com/cdracars/stl2step-freecad/master/README.md</url>
+  <url type="readme">https://raw.githubusercontent.com/cdracars/stl2step-freecad/main/README.md</url>
   <icon>freecad/stl2step/resources/icons/stl2step.svg</icon>
   <tag>mesh</tag>
   <tag>STL</tag>
