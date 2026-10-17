@@ -1,12 +1,12 @@
 {
   "upstreamRepository": "BlinkingSun/stl2step",
-  "tag": "v1.4.3",
-  "engineVersion": "1.4.3",
+  "tag": "v1.5.0",
+  "engineVersion": "1.5.0",
   "assets": {
     "windows-x64": {
-      "name": "stl2step-engine-v1.4.3-windows-x64.zip",
-      "sha256": "e3533a31da53811b96bc7ca57f513a9891db8182899837f94674dfcbebdc15a4",
-      "size": 16014134
+      "name": "stl2step-engine-v1.5.0-windows-x64.zip",
+      "sha256": "e8b77ee6779557e98bc27a46106df98e59b3421820cc91d0aa246eabf8a1c9ef",
+      "size": 16496968
     }
   }
 }
