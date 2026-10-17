@@ -151,11 +151,12 @@ engines are currently published only for Windows x64; on other platforms, build
 
 ## Development
 
-Maintainers should update the add-on by changing the source, running the tests
-and syntax checks below, updating `package.xml` and
-`CHANGELOG.md`, and merging to `master`. Publishing a version tag triggers CI
-to vendor the pinned upstream engine, validate the complete archive, and attach
-the release ZIP. Engine binaries should remain out of Git history.
+Day-to-day work happens on `develop`; `main` holds released versions only, and
+it's the branch the FreeCAD Addon Manager installs from. See
+[Branches and releases](CONTRIBUTING.md#branches-and-releases) for the release
+steps. Publishing a release triggers CI to vendor the pinned upstream engine,
+validate the complete archive, and attach the release ZIP. Engine binaries
+should remain out of Git history.
 
 FreeCAD-independent tests:
 
