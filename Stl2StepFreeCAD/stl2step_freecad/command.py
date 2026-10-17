@@ -11,7 +11,7 @@ import FreeCAD as App
 import FreeCADGui as Gui
 import Import
 import Mesh
-from PySide import QtCore, QtWidgets
+from PySide import QtCore, QtGui, QtWidgets
 
 from . import engine, engine_install
 
@@ -207,6 +207,8 @@ class ConversionTaskPanel:
             self._units.setEnabled(False)
 
         self.form.setWindowTitle("STL to STEP")
+        # FreeCAD shows the form's window icon in the task panel header.
+        self.form.setWindowIcon(QtGui.QIcon(str(_addon_directory() / "resources" / "stl2step.svg")))
 
     def _choose_file(self):
         filename, _ = QtWidgets.QFileDialog.getOpenFileName(
