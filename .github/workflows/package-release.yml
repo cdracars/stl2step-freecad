@@ -32,8 +32,13 @@ jobs:
         shell: pwsh
         run: |
           $tag = '${{ github.event.release.tag_name || inputs.tag }}'
-          $archive = Join-Path $env:RUNNER_TEMP "Stl2StepFreeCAD-$tag.zip"
-          Compress-Archive -Path 'Stl2StepFreeCAD','ENGINE_CONTRACT.md','LICENSE','LICENSE.stl2step','README.md','THIRD_PARTY_NOTICES.md' -DestinationPath $archive -Force
+          $archive = Join-Path $env:RUNNER_TEMP "stl2step-freecad-$tag.zip"
+          # One top-level folder, laid out like an Addon Manager clone, to extract into Mod.
+          $stage = Join-Path $env:RUNNER_TEMP 'stage\stl2step-freecad'
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item -Path 'package.xml','freecad','CHANGELOG.md','ENGINE_CONTRACT.md','LICENSE','LICENSE.stl2step','README.md','THIRD_PARTY_NOTICES.md' -Destination $stage -Recurse
+          Get-ChildItem -LiteralPath $stage -Recurse -Directory -Filter '__pycache__' | Remove-Item -Recurse -Force
+          Compress-Archive -Path $stage -DestinationPath $archive -Force
           "ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Verify add-on archive

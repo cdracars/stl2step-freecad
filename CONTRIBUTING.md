@@ -21,7 +21,7 @@ Run the checks from the repository root:
 
 ```text
 python -m unittest discover -s tests
-python -m py_compile Stl2StepFreeCAD\Init.py Stl2StepFreeCAD\InitGui.py Stl2StepFreeCAD\stl2step_freecad\command.py Stl2StepFreeCAD\stl2step_freecad\engine.py
+python -m py_compile freecad\stl2step\__init__.py freecad\stl2step\init_gui.py freecad\stl2step\command.py freecad\stl2step\engine.py freecad\stl2step\engine_install.py
 ```
 
 If FreeCAD is installed, also run `tests\freecad_smoke.py` with `freecadcmd`.

@@ -8,7 +8,7 @@ import zipfile
 from pathlib import Path
 
 
-MODULE_PATH = Path(__file__).parents[1] / "Stl2StepFreeCAD" / "stl2step_freecad" / "engine_install.py"
+MODULE_PATH = Path(__file__).parents[1] / "freecad" / "stl2step" / "engine_install.py"
 SPEC = importlib.util.spec_from_file_location("stl2step_freecad_engine_install", MODULE_PATH)
 engine_install = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(engine_install)

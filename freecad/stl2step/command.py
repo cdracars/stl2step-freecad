@@ -17,7 +17,12 @@ from . import engine, engine_install
 
 
 def _addon_directory() -> Path:
-    return Path(__file__).resolve().parents[1]
+    # The freecad/stl2step package folder holds bin/ and resources/.
+    return Path(__file__).resolve().parent
+
+
+def _icon() -> str:
+    return str(_addon_directory() / "resources" / "icons" / "stl2step.svg")
 
 
 def _engine_root() -> Path:
@@ -208,7 +213,7 @@ class ConversionTaskPanel:
 
         self.form.setWindowTitle("STL to STEP")
         # FreeCAD shows the form's window icon in the task panel header.
-        self.form.setWindowIcon(QtGui.QIcon(str(_addon_directory() / "resources" / "stl2step.svg")))
+        self.form.setWindowIcon(QtGui.QIcon(_icon()))
 
     def _choose_file(self):
         filename, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -261,7 +266,7 @@ class ConvertCommand:
 
     def GetResources(self):
         return {
-            "Pixmap": str(_addon_directory() / "resources" / "stl2step.svg"),
+            "Pixmap": _icon(),
             "MenuText": "STL to STEP Solid",
             "ToolTip": "Reconstruct a selected mesh or STL as STEP B-Rep geometry.",
         }

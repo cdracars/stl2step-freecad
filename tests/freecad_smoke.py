@@ -11,7 +11,7 @@ import Import
 
 
 repo = Path(__file__).resolve().parents[1]
-engine = repo / "Stl2StepFreeCAD" / "bin" / "windows-x86_64" / "stl2step.exe"
+engine = repo / "freecad" / "stl2step" / "bin" / "windows-x86_64" / "stl2step.exe"
 work = Path(tempfile.mkdtemp(prefix="stl2step-freecad-smoke-", dir=repo / "tests"))
 stl = work / "tetrahedron.stl"
 output = work / "tetrahedron.step"
