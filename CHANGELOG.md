@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Added a consent-gated download of the pinned engine when none is installed,
+  verified by size, SHA-256, safe unpacking, and engine version before use.
+- Moved the engine pin into the add-on as
+  `stl2step_freecad/engine-release.json`, with assets keyed by platform.
+- Fixed the task panel crashing on FreeCAD builds that use PySide6.
+- Switching to the workbench now opens the conversion panel automatically.
+
 ## 0.5.0
 
 - Promoted STL to STEP into a native FreeCAD workbench.

@@ -18,8 +18,8 @@ def verify_archive(archive: Path, addon_dir: str = "Stl2StepFreeCAD") -> None:
             "LICENSE.stl2step",
             "README.md",
             "THIRD_PARTY_NOTICES.md",
-            "config/engine-release.json",
             f"{prefix}package.xml",
+            f"{prefix}stl2step_freecad/engine-release.json",
             f"{prefix}bin/windows-x86_64/stl2step.exe",
         }
         missing = sorted(required - names)

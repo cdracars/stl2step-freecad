@@ -10,3 +10,7 @@ version before placing it here. For development, use
 `scripts\\bundle-engine.ps1 -EngineDirectory <directory>` to copy a local build.
 
 For development, set `STL2STEP_EXECUTABLE` to a locally built engine.
+
+Installs without a bundle here (such as from the Addon Manager) can download
+the same pinned engine at runtime, after the user agrees, into FreeCAD's user
+data directory rather than this folder.

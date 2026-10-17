@@ -18,6 +18,14 @@ class Stl2StepWorkbench(Gui.Workbench):
         self.appendToolbar("STL to STEP", [ConvertCommand.NAME])
         self.appendMenu("STL to STEP", [ConvertCommand.NAME])
 
+    def Activated(self):
+        command = getattr(self, "_command", None)
+        if command:
+            from PySide import QtCore
+
+            # Open the tool once FreeCAD has finished switching workbenches.
+            QtCore.QTimer.singleShot(0, command.open_from_workbench)
+
     def Deactivated(self):
         command = getattr(self, "_command", None)
         if command:

@@ -15,6 +15,10 @@ class EngineError(RuntimeError):
     """The converter could not be located or did not produce a usable result."""
 
 
+class EngineMissing(EngineError):
+    """No engine was found; the user may be offered a verified download."""
+
+
 def version(executable: Path) -> str:
     """Return the version reported by the engine executable."""
     completed = subprocess.run(
@@ -40,7 +44,8 @@ def _bundled_relative_path() -> Path:
     return Path("bin") / f"linux-{architecture}" / "stl2step"
 
 
-def resolve_executable(addon_directory: Path) -> Path:
+def resolve_executable(addon_directory: Path, downloaded: Path | None = None) -> Path:
+    """Find the engine: env override, bundled, downloaded, then PATH."""
     configured = os.environ.get("STL2STEP_EXECUTABLE")
     if configured:
         candidate = Path(configured).expanduser()
@@ -51,10 +56,12 @@ def resolve_executable(addon_directory: Path) -> Path:
     bundled = addon_directory / _bundled_relative_path()
     if bundled.is_file():
         return bundled.resolve()
+    if downloaded is not None and downloaded.is_file():
+        return downloaded.resolve()
     discovered = shutil.which("stl2step")
     if discovered:
         return Path(discovered).resolve()
-    raise EngineError(
+    raise EngineMissing(
         "Could not find stl2step. Set STL2STEP_EXECUTABLE, put it on PATH, "
         f"or install the platform binary at {bundled}."
     )

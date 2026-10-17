@@ -28,10 +28,15 @@ jobs:
           $manifest = Get-Content -Raw (Join-Path $env:RUNNER_TEMP 'engine-manifest.json') | ConvertFrom-Json
           $windows = $manifest.assets.'windows-x64'
           if (-not $windows) { throw "Manifest has no windows-x64 entry" }
-          $config = Get-Content -Raw (Join-Path $env:GITHUB_WORKSPACE 'config\engine-release.json') | ConvertFrom-Json
-          if ($config.tag -eq $release.tag_name -and $config.sha256 -eq $windows.sha256) { exit 0 }
-          @{ upstreamRepository='BlinkingSun/stl2step'; tag=$release.tag_name; engineVersion=$manifest.engineVersion; asset=$windows.name; sha256=$windows.sha256; size=$windows.size; minimumWindows=$windows.minWindows } |
-            ConvertTo-Json | Set-Content (Join-Path $env:GITHUB_WORKSPACE 'config\engine-release.json')
+          $pinPath = Join-Path $env:GITHUB_WORKSPACE 'Stl2StepFreeCAD\stl2step_freecad\engine-release.json'
+          $config = Get-Content -Raw $pinPath | ConvertFrom-Json
+          if ($config.tag -eq $release.tag_name -and $config.assets.'windows-x64'.sha256 -eq $windows.sha256) { exit 0 }
+          $assets = [ordered]@{}
+          foreach ($entry in $manifest.assets.PSObject.Properties) {
+            $assets[$entry.Name] = [ordered]@{ name=$entry.Value.name; sha256=$entry.Value.sha256; size=$entry.Value.size }
+          }
+          [ordered]@{ upstreamRepository='BlinkingSun/stl2step'; tag=$release.tag_name; engineVersion=$manifest.engineVersion; assets=$assets } |
+            ConvertTo-Json -Depth 5 | Set-Content $pinPath
           "UPSTREAM_TAG=$($release.tag_name)" | Out-File -FilePath $env:GITHUB_ENV -Append
           "ENGINE_VERSION=$($manifest.engineVersion)" | Out-File -FilePath $env:GITHUB_ENV -Append
 

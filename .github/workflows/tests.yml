@@ -30,7 +30,8 @@ jobs:
             Stl2StepFreeCAD\Init.py `
             Stl2StepFreeCAD\InitGui.py `
             Stl2StepFreeCAD\stl2step_freecad\command.py `
-            Stl2StepFreeCAD\stl2step_freecad\engine.py
+            Stl2StepFreeCAD\stl2step_freecad\engine.py `
+            Stl2StepFreeCAD\stl2step_freecad\engine_install.py
 
       - name: Vendor pinned upstream engine
         shell: pwsh
