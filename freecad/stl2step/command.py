@@ -71,6 +71,13 @@ def _follow_safe_redirects(QtNetwork, manager):
     manager.setRedirectPolicy(policy)
 
 
+def _window_modal():
+    modal = getattr(QtCore.Qt, "WindowModal", None)
+    if modal is None:
+        modal = QtCore.Qt.WindowModality.WindowModal
+    return modal
+
+
 def _process_failed_to_start():
     failed = getattr(QtCore.QProcess, "FailedToStart", None)
     if failed is None:
@@ -297,6 +304,9 @@ class ConvertCommand:
         self._progress_dialog = None
         self._panel = None
         self._download = None
+        # True while the engine download prompt is open, so a second
+        # activation cannot stack another prompt on top of it.
+        self._prompting = False
 
     def GetResources(self):
         return {
@@ -306,7 +316,7 @@ class ConvertCommand:
         }
 
     def IsActive(self):
-        return self._process is None and self._download is None
+        return self._process is None and self._download is None and not self._prompting
 
     def _hide_progress(self):
         if self._progress_dialog:
@@ -360,6 +370,8 @@ class ConvertCommand:
 
     def Activated(self):
         self._shutting_down = False
+        if self._prompting:
+            return
         if self._process is not None or self._download is not None:
             busy = "A conversion" if self._process is not None else "The engine download"
             QtWidgets.QMessageBox.information(
@@ -381,7 +393,7 @@ class ConvertCommand:
         """Show the tool when the user switches to this workbench, if it is idle."""
         if self._process is not None or self._download is not None or self._panel is not None:
             return
-        if Gui.Control.activeDialog():
+        if self._prompting or Gui.Control.activeDialog():
             return
         self.Activated()
 
@@ -437,10 +449,15 @@ class ConvertCommand:
         cancel = box.addButton("Cancel", QtWidgets.QMessageBox.RejectRole)
         box.setDefaultButton(download)
         box.setEscapeButton(cancel)
-        _exec(box)
-        if box.clickedButton() is not download:
-            return
-        self._start_download(root, pin, asset)
+        self._prompting = True
+        try:
+            _exec(box)
+        finally:
+            self._prompting = False
+        accepted = box.clickedButton() is download
+        box.deleteLater()
+        if accepted:
+            self._start_download(root, pin, asset)
 
     def _start_download(self, root, pin, asset):
         parent = Gui.getMainWindow()
@@ -451,6 +468,8 @@ class ConvertCommand:
         progress.setMinimumDuration(0)
         progress.setAutoClose(False)
         progress.setAutoReset(False)
+        # Keep the progress window in front of FreeCAD until the install ends.
+        progress.setWindowModality(_window_modal())
         self._download = {"dialog": progress, "version": pin["engineVersion"], "stop": None}
         url = engine_install.download_url(pin, asset)
         App.Console.PrintMessage(f"stl2step: downloading {url}\n")
