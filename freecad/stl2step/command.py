@@ -71,6 +71,13 @@ def _follow_safe_redirects(QtNetwork, manager):
     manager.setRedirectPolicy(policy)
 
 
+def _process_failed_to_start():
+    failed = getattr(QtCore.QProcess, "FailedToStart", None)
+    if failed is None:
+        failed = QtCore.QProcess.ProcessError.FailedToStart
+    return failed
+
+
 def _network_no_error(QtNetwork):
     no_error = getattr(QtNetwork.QNetworkReply, "NoError", None)
     if no_error is None:
@@ -526,11 +533,12 @@ class ConvertCommand:
                 self._show_download_progress(expected, expected)
                 QtWidgets.QApplication.processEvents()
                 try:
-                    result = engine_install.install_archive(
-                        root, pin, archive, staging, version_of=engine.version
-                    )
+                    executable = engine_install.stage_archive(pin, archive, staging)
                 except Exception as exc:
                     error = exc
+                else:
+                    self._check_downloaded_engine(root, pin, executable, staging, download)
+                    return
             shutil.rmtree(staging, ignore_errors=True)
             if self._download is download:
                 self._finish_download(result, error)
@@ -540,6 +548,68 @@ class ConvertCommand:
         reply.finished.connect(on_finished)
         download["dialog"].canceled.connect(cancel)
         download["stop"] = cancel
+
+    def _check_downloaded_engine(self, root, pin, executable, staging, download):
+        # Run "stl2step --version" without blocking the GUI. The first run of a
+        # new executable can take several seconds while antivirus scans it.
+        dialog = download["dialog"]
+        dialog.setLabelText(
+            "Checking that the engine runs…\n"
+            "Your antivirus may scan it the first time; this can take a moment."
+        )
+        dialog.setRange(0, 0)  # Busy indicator; there is no percentage to show.
+        process = QtCore.QProcess(dialog)
+        timer = QtCore.QTimer(dialog)
+        timer.setSingleShot(True)
+        state = {"done": False}
+
+        def finish(result=None, error=None):
+            if state["done"]:
+                return
+            state["done"] = True
+            timer.stop()
+            shutil.rmtree(staging, ignore_errors=True)
+            if self._download is download:
+                self._finish_download(result, error)
+
+        def on_finished(exit_code, _exit_status):
+            if state["done"]:
+                return
+            if exit_code != 0:
+                finish(error=engine_install.InstallError(
+                    f"The downloaded engine could not run (exit code {exit_code})."
+                ))
+                return
+            try:
+                finish(result=engine_install.commit_install(
+                    root, pin, executable, _decode(process.readAllStandardOutput())
+                ))
+            except Exception as exc:
+                finish(error=exc)
+
+        def on_error(process_error):
+            if process_error == _process_failed_to_start():
+                finish(error=engine_install.InstallError(
+                    f"The downloaded engine could not start: {process.errorString()}"
+                ))
+
+        def on_timeout():
+            process.kill()
+            finish(error=engine_install.InstallError(
+                "The downloaded engine did not respond within 60 seconds."
+            ))
+
+        def cancel():
+            process.kill()
+            finish(error=engine_install.InstallCancelled("The engine download was cancelled."))
+
+        process.finished.connect(on_finished)
+        process.errorOccurred.connect(on_error)
+        timer.timeout.connect(on_timeout)
+        dialog.canceled.connect(cancel)
+        download["stop"] = cancel
+        process.start(str(executable), ["--version"])
+        timer.start(60000)
 
     def _start_thread_download(self, root, pin):
         cancel_event = threading.Event()

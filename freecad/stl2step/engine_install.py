@@ -168,8 +168,21 @@ def install_archive(
 
     Used after any download method. The archive must match the pinned size and
     SHA-256, unpack without unsafe paths into ``staging``, and report the
-    pinned version before it is moved into place.
+    pinned version before it is moved into place. Callers that must not block
+    while the engine runs can use stage_archive and commit_install directly.
     """
+    executable = stage_archive(pin, archive, staging, key=key)
+    try:
+        reported = version_of(executable)
+    except Exception as exc:
+        raise InstallError(f"The downloaded engine could not run: {exc}") from exc
+    return commit_install(root, pin, executable, reported, key=key)
+
+
+def stage_archive(
+    pin: dict[str, Any], archive: Path, staging: Path, *, key: Optional[str] = None
+) -> Path:
+    """Verify the archive and unpack it into ``staging``; return the engine to check."""
     key = key or platform_key()
     asset = required_asset(pin, key)
     _verify_archive(archive, asset)
@@ -181,14 +194,26 @@ def install_archive(
         raise InstallError(f"The engine archive did not contain {executable.name}.")
     if not key.startswith("windows-"):
         executable.chmod(executable.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-    try:
-        reported = version_of(executable).strip()
-    except Exception as exc:
-        raise InstallError(f"The downloaded engine could not run: {exc}") from exc
+    return executable
+
+
+def commit_install(
+    root: Path,
+    pin: dict[str, Any],
+    executable: Path,
+    reported_version: str,
+    *,
+    key: Optional[str] = None,
+) -> Path:
+    """Install a staged engine once its ``--version`` output matches the pin."""
+    key = key or platform_key()
+    asset = required_asset(pin, key)
+    reported = reported_version.strip()
     expected = f"stl2step {pin['engineVersion']}"
     if reported != expected:
         raise InstallError(f"The downloaded engine reported '{reported}', expected '{expected}'.")
 
+    extracted = executable.parent
     target = install_directory(root, pin, key)
     if target.exists():
         shutil.rmtree(target)

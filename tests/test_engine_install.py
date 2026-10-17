@@ -210,6 +210,20 @@ class EngineInstallTests(unittest.TestCase):
             )
         self.assertIsNone(engine_install.installed_executable(self.root, pin, KEY))
 
+    def test_stage_then_commit_installs_after_version_check(self):
+        data = make_archive()
+        pin = make_pin(data)
+        staging = engine_install.new_staging(self.root)
+        archive = staging / "engine.zip"
+        archive.write_bytes(data)
+        executable = engine_install.stage_archive(pin, archive, staging, key=KEY)
+        self.assertIsNone(engine_install.installed_executable(self.root, pin, KEY))
+        with self.assertRaisesRegex(engine_install.InstallError, "expected 'stl2step 1.4.3'"):
+            engine_install.commit_install(self.root, pin, executable, "stl2step 0.0.1", key=KEY)
+        self.assertIsNone(engine_install.installed_executable(self.root, pin, KEY))
+        installed = engine_install.commit_install(self.root, pin, executable, "stl2step 1.4.3\r\n", key=KEY)
+        self.assertEqual(engine_install.installed_executable(self.root, pin, KEY), installed)
+
     def test_reports_older_installed_versions(self):
         old_data = make_archive()
         old_pin = make_pin(old_data, version="1.4.3")
