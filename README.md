@@ -55,12 +55,30 @@ folder intact; don't copy only the Python files.
 
 ## Update an existing installation
 
-- **Git install:** close FreeCAD, run `git pull` in the add-on folder, then
-  start FreeCAD again.
+Check the [Releases page](https://github.com/cdracars/stl2step-freecad/releases)
+or `CHANGELOG.md` to see what changed. Then update the same way you installed:
+
+- **Addon Manager:** open **Tools → Addon manager**, check for updates, and
+  update **STL to STEP**. Restart FreeCAD when asked.
+- **Git install:** close FreeCAD, pull the latest version, then start FreeCAD
+  again:
+
+  ```bash
+  git -C "%APPDATA%\FreeCAD\v1-1\Mod\stl2step-freecad" pull
+  ```
+
+  Use the matching versioned directory for another FreeCAD release.
 - **Release ZIP:** close FreeCAD, delete `Mod\stl2step-freecad`, extract the
   newest release ZIP in its place, then start FreeCAD again.
 
-Your documents, saved settings, and any downloaded engine are not affected.
+Your documents and saved settings are not affected. If the new version uses a
+newer engine, an Addon Manager or git install asks once, on your next
+conversion, to download it, and the old engine is removed afterwards. A release
+ZIP already includes the new engine.
+
+To check which version you have, open `package.xml` in the add-on folder or
+look at the add-on in the Addon Manager. The engine version appears at the end
+of each conversion summary.
 
 ### Upgrading from 0.5.x or earlier
 
@@ -69,7 +87,7 @@ changed from `Stl2StepFreeCAD` to `stl2step-freecad`.
 
 1. Close FreeCAD.
 2. Delete the old `%APPDATA%\FreeCAD\<version>\Mod\Stl2StepFreeCAD` folder.
-3. Install 0.6.0 using either method above.
+3. Install the latest version using either method under [Install](#install).
 
 If the old folder is still present, FreeCAD's report view shows a warning,
 because both copies register the same workbench. Your units and mode settings
